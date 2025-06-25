@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>SkillSwap Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="container">
+    <h2>Welcome to SkillSwap</h2>
+    <form>
+      <input type="text" placeholder="Skill You Offer" required>
+      <input type="text" placeholder="Skill You Want" required>
+      <button type="submit">Add Skill</button>
+    </form>
+
+    <h3>Community Skill Listings</h3>
+    <ul id="skillList"></ul>
+  </div>
+
+  <script type="module" src="firebase.js"></script>
+  <script type="module" src="js/dashboard.js"></script>
+</body>
+
+</html>
