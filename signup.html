@@ -16,7 +16,11 @@
   <input type="email" id="signupEmail" placeholder="Email" required>
 
   <input type="password" id="signupPassword" placeholder="Password" required>
-  <div id="passwordStrength" class="feedback"></div> <!-- Strength indicator -->
+  <div id="passwordStrength" class="feedback"></div> <!-- Displays password strength feedback to the user -->
+  <div id="passwordError" class="feedback"></div> <!-- Displays error if password is too weak -->
+<div id="passwordStrengthBar" class="progress-bar">
+  <div id="strengthFill" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+</div> <!-- /passwordStrengthBar -->
 
   <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
   <div id="confirmError" class="feedback"></div> <!--  Mismatch warning -->

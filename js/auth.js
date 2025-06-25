@@ -21,6 +21,26 @@ const confirmError = document.getElementById("confirmError");
 const password = passwordInput.value;
 const confirmPassword = confirmInput.value;
 
+const passwordInput = document.getElementById("signupPassword");
+const strengthFill = document.getElementById("strengthFill");
+
+passwordInput?.addEventListener("input", () => {
+  const val = passwordInput.value;
+  let score = 0;
+
+  if (val.length >= 6) score += 1;
+  if (/[A-Z]/.test(val)) score += 1;
+  if (/[0-9]/.test(val)) score += 1;
+  if (/[^A-Za-z0-9]/.test(val)) score += 1;
+
+  const width = [0, 25, 50, 75, 100][score];
+  const colors = ["transparent", "red", "orange", "gold", "green"];
+
+  strengthFill.style.width = `${width}%`;
+  strengthFill.style.backgroundColor = colors[score];
+});
+
+
 // Password strength checker
 passwordInput?.addEventListener("input", () => {
   const value = passwordInput.value;
