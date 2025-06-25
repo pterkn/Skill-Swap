@@ -1,5 +1,3 @@
-
-```markdown
 # SkillSwap: Peer-to-Peer Skill Exchange Web Application
 
 ## 🤝 Overview
