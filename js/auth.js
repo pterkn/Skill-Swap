@@ -13,7 +13,17 @@ if (signupForm) {
     e.preventDefault();
     const email = document.getElementById("signupEmail").value;
     const password = document.getElementById("signupPassword").value;
+const confirmPassword = document.getElementById("confirmPassword").value;
 
+    if (password !== confirmPassword) {
+      alert("Passwords do not match.");
+      return;
+    }
+    if (password.length < 6) {
+      alert("Password must be at least 6 characters long.");
+      return;
+    }
+    
     createUserWithEmailAndPassword(auth, email, password)
       .then(() => {
         window.location.href = "dashboard.html";  // Redirect here
