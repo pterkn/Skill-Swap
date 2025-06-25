@@ -17,12 +17,10 @@ const passwordInput = document.getElementById("signupPassword");
 const confirmInput = document.getElementById("confirmPassword");
 const passwordStrength = document.getElementById("passwordStrength");
 const confirmError = document.getElementById("confirmError");
+const strengthFill = document.getElementById("strengthFill");
 
 const password = passwordInput.value;
 const confirmPassword = confirmInput.value;
-
-const passwordInput = document.getElementById("signupPassword");
-const strengthFill = document.getElementById("strengthFill");
 
 passwordInput?.addEventListener("input", () => {
   const val = passwordInput.value;
