@@ -34,11 +34,13 @@ onAuthStateChanged(auth, (user) => {
       const offered = form.querySelector("input[placeholder='Skill You Offer']").value;
       const requested = form.querySelector("input[placeholder='Skill You Want']").value;
 
-      await addDoc(skillsRef, {
-        email: user.email,
-        offered,
-        requested
+      await addDoc(collection(db, "skills"), {
+  email: user.email,
+  offered,
+  requested,
+  createdAt: new Date()  // timestamp added
       });
+      alert("Skill added successfully!");
 
       form.reset();
     });

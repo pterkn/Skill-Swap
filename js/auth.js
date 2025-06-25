@@ -11,9 +11,41 @@ const loginForm = document.getElementById("loginForm");
 if (signupForm) {
   signupForm.addEventListener("submit", (e) => {
     e.preventDefault();
-    const email = document.getElementById("signupEmail").value;
-    const password = document.getElementById("signupPassword").value;
-const confirmPassword = document.getElementById("confirmPassword").value;
+const email = document.getElementById("signupEmail").value;
+
+const passwordInput = document.getElementById("signupPassword");
+const confirmInput = document.getElementById("confirmPassword");
+const passwordStrength = document.getElementById("passwordStrength");
+const confirmError = document.getElementById("confirmError");
+
+const password = passwordInput.value;
+const confirmPassword = confirmInput.value;
+
+// Password strength checker
+passwordInput?.addEventListener("input", () => {
+  const value = passwordInput.value;
+  let strength = "Weak";
+  passwordStrength.classList.remove("good");
+
+  if (value.length >= 6 && /[A-Z]/.test(value) && /[0-9]/.test(value)) {
+    strength = "Strong";
+    passwordStrength.classList.add("good");
+  } else if (value.length >= 6) {
+    strength = "Moderate";
+  }
+
+  passwordStrength.textContent = `Password Strength: ${strength}`;
+});
+
+// Confirm password match
+confirmInput?.addEventListener("input", () => {
+  if (confirmInput.value !== passwordInput.value) {
+    confirmError.textContent = "Passwords do not match.";
+  } else {
+    confirmError.textContent = "";
+  }
+});
+
 
     if (password !== confirmPassword) {
       alert("Passwords do not match.");
@@ -23,7 +55,7 @@ const confirmPassword = document.getElementById("confirmPassword").value;
       alert("Password must be at least 6 characters long.");
       return;
     }
-    
+
     createUserWithEmailAndPassword(auth, email, password)
       .then(() => {
         window.location.href = "dashboard.html";  // Redirect here

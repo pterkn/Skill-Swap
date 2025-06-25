@@ -13,11 +13,17 @@
     <h2>Create Your Account</h2>
 
     <form id="signupForm">
-      <input type="email" id="signupEmail" placeholder="Email" required>
-      <input type="password" id="signupPassword" placeholder="Password" required>
-      <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
-      <button type="submit">Sign Up</button>
-    </form>
+  <input type="email" id="signupEmail" placeholder="Email" required>
+
+  <input type="password" id="signupPassword" placeholder="Password" required>
+  <div id="passwordStrength" class="feedback"></div> <!-- Strength indicator -->
+
+  <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
+  <div id="confirmError" class="feedback"></div> <!--  Mismatch warning -->
+
+  <button type="submit">Sign Up</button>
+</form>
+
 
     <p>Already have an account? <a href="index.html">Login</a></p>
   </div>
