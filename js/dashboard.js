@@ -1,10 +1,14 @@
 // dashboard.js
-import { db, auth } from "../firebase.js";
+import { db, auth, dbRealtime } from "../firebase.js";
 import {
   collection,
   addDoc,
   onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
+import {
+  ref,
+  onChildAdded
+} from "https://www.gstatic.com/firebasejs/10.11.1/firebase-database.js";
 import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-auth.js";
@@ -12,6 +16,7 @@ import {
 const form = document.querySelector("form");
 const skillList = document.getElementById("skillList");
 const searchBar = document.getElementById("searchBar");
+const toast = document.getElementById("toast");
 let allSkills = [];
 
 onAuthStateChanged(auth, (user) => {
@@ -20,11 +25,11 @@ onAuthStateChanged(auth, (user) => {
   } else {
     const skillsRef = collection(db, "skills");
 
-    // Real-time listener
+    // Real-time Firestore skill listener
     onSnapshot(skillsRef, (snapshot) => {
       allSkills = snapshot.docs.map(doc => doc.data());
 
-      //  Sort alphabetically by 'offered' skill
+      // Sort alphabetically by 'offered'
       allSkills.sort((a, b) => {
         return a.offered.toLowerCase().localeCompare(b.offered.toLowerCase());
       });
@@ -32,7 +37,7 @@ onAuthStateChanged(auth, (user) => {
       renderSkills(allSkills);
     });
 
-    // Render function
+    // Render skill listings
     function renderSkills(skillsToRender) {
       skillList.innerHTML = "";
       skillsToRender.forEach(skill => {
@@ -45,14 +50,17 @@ onAuthStateChanged(auth, (user) => {
         }
 
         li.innerHTML = `
-  ${skill.email}: Offers ${skill.offered} | Wants ${skill.requested}
-  <button onclick="window.location.href='chat.html?partner=${skill.email}'">Chat</button>
-`;
+          ${skill.email}: Offers ${skill.offered} | Wants ${skill.requested}${dateStr}
+          ${skill.email !== user.email
+            ? `<button onclick="window.location.href='chat.html?partner=${skill.email}'">Chat</button>`
+            : ''}
+        `;
 
+        skillList.appendChild(li);
       });
     }
 
-    // Live filter
+    // Live search
     searchBar.addEventListener("input", () => {
       const query = searchBar.value.toLowerCase();
       const filtered = allSkills.filter(skill =>
@@ -60,7 +68,6 @@ onAuthStateChanged(auth, (user) => {
         skill.requested?.toLowerCase().includes(query)
       );
 
-      //  Sort filtered results too
       filtered.sort((a, b) => {
         return a.offered.toLowerCase().localeCompare(b.offered.toLowerCase());
       });
@@ -68,7 +75,7 @@ onAuthStateChanged(auth, (user) => {
       renderSkills(filtered);
     });
 
-    // Skill submission
+    // Add new skill
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const offered = form.querySelector("input[placeholder='Skill You Offer']").value;
@@ -84,5 +91,39 @@ onAuthStateChanged(auth, (user) => {
       alert("Skill added successfully!");
       form.reset();
     });
+
+    // 🔔 Toast helper
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.remove("hidden");
+      setTimeout(() => toast.classList.add("hidden"), 3000);
+    }
+
+    // 🔄 Listen for new messages
+    function listenForNewMessages(currentUserEmail) {
+      const chatsRef = ref(dbRealtime, "chats");
+
+      // Listen to all chat threads
+      onChildAdded(chatsRef, (chatSnapshot) => {
+        const chatId = chatSnapshot.key;
+
+        // Only react to chats involving the current user
+        if (!chatId.includes(currentUserEmail.replace(/\./g, "_"))) return;
+
+        const messagesRef = ref(dbRealtime, `chats/${chatId}`);
+
+        // Listen for incoming messages in the chat
+        onChildAdded(messagesRef, (msgSnap) => {
+          const data = msgSnap.val();
+
+          if (data.sender !== currentUserEmail) {
+            showToast(`New message from ${data.sender}`);
+          }
+        });
+      });
+    }
+
+    // Start listening for message notifications
+    listenForNewMessages(user.email);
   }
 });
