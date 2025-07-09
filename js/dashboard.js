@@ -99,10 +99,15 @@ onAuthStateChanged(auth, (user) => {
 
     //  Toast helper
     function showToast(message) {
-      toast.textContent = message;
-      toast.classList.remove("hidden");
-      setTimeout(() => toast.classList.add("hidden"), 3000);
-    }
+  const toast = document.getElementById("toast");
+  toast.textContent = message;
+  toast.classList.remove("hidden");
+
+  setTimeout(() => {
+    toast.classList.add("hidden");
+  }, 3000);
+}
+
 
     //  Listen for new messages
     function listenForNewMessages(currentUserEmail) {
