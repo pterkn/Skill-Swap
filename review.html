@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Leave a Review – SkillSwap</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h2>Rate Your Skill Partner</h2>
+
+    <form id="reviewForm">
+      <label for="stars">Rating:</label>
+      <div id="starRating">
+        ★★★★★
+      </div>
+      <input type="hidden" id="stars" value="0" required />
+
+      <label for="comment">Comment:</label>
+      <textarea id="comment" placeholder="Write your feedback..."></textarea>
+
+      <button type="submit">Submit Review</button>
+    </form>
+
+    <button onclick="window.location.href='dashboard.html'">← Back to Dashboard</button>
+  </div>
+
+  <script type="module" src="firebase.js"></script>
+  <script type="module" src="js/review.js"></script>
+</body>
+</html>

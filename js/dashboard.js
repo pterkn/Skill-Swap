@@ -56,6 +56,11 @@ onAuthStateChanged(auth, (user) => {
             : ''}
         `;
 
+        li.innerHTML += `
+  <button onclick="window.location.href='review.html?user=${skill.email}'">Rate</button>
+`;
+
+
         skillList.appendChild(li);
       });
     }
@@ -92,14 +97,14 @@ onAuthStateChanged(auth, (user) => {
       form.reset();
     });
 
-    // 🔔 Toast helper
+    //  Toast helper
     function showToast(message) {
       toast.textContent = message;
       toast.classList.remove("hidden");
       setTimeout(() => toast.classList.add("hidden"), 3000);
     }
 
-    // 🔄 Listen for new messages
+    //  Listen for new messages
     function listenForNewMessages(currentUserEmail) {
       const chatsRef = ref(dbRealtime, "chats");
 

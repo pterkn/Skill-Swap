@@ -160,3 +160,14 @@ li {
 .toast.hidden {
   display: none;
 }
+
+#starRating {
+  cursor: pointer;
+  font-size: 1.5rem;
+  color: gold;
+  user-select: none;
+}
+
+#starRating span {
+  padding: 0 4px;
+}
