@@ -96,12 +96,22 @@ li {
   background-color: #f4f6f8;
   padding: 1rem 2rem;
   border-bottom: 1px solid #ddd;
+  position: sticky;
+  top: 0;
+  z-index: 1000; /* ensures it stays on top of content */
 }
 
 .site-title {
   font-family: 'Playfair Display', serif;
   font-size: 2rem;
-  color: #333;
   margin: 0;
 }
 
+.site-title a {
+  text-decoration: none;
+  color: #333;
+}
+
+.site-title a:hover {
+  text-decoration: underline;
+}
