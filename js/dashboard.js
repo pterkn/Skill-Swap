@@ -24,7 +24,7 @@ onAuthStateChanged(auth, (user) => {
     onSnapshot(skillsRef, (snapshot) => {
       allSkills = snapshot.docs.map(doc => doc.data());
 
-      // ✅ Sort alphabetically by 'offered' skill
+      //  Sort alphabetically by 'offered' skill
       allSkills.sort((a, b) => {
         return a.offered.toLowerCase().localeCompare(b.offered.toLowerCase());
       });
@@ -57,7 +57,7 @@ onAuthStateChanged(auth, (user) => {
         skill.requested?.toLowerCase().includes(query)
       );
 
-      // ✅ Sort filtered results too
+      //  Sort filtered results too
       filtered.sort((a, b) => {
         return a.offered.toLowerCase().localeCompare(b.offered.toLowerCase());
       });
