@@ -18,6 +18,10 @@ const skillList = document.getElementById("skillList");
 const searchBar = document.getElementById("searchBar");
 const toast = document.getElementById("toast");
 let allSkills = [];
+// Check if user is offline
+if (!navigator.onLine) {
+  showToast("📴 You're offline. Some features may not work.");
+}
 
 onAuthStateChanged(auth, (user) => {
   if (!user) {
@@ -39,22 +43,35 @@ onAuthStateChanged(auth, (user) => {
 
     // Render skill listings
     function renderSkills(skillsToRender) {
-      skillList.innerHTML = "";
-      skillsToRender.forEach(skill => {
-        const li = document.createElement("li");
+  skillList.innerHTML = "";
 
-        let dateStr = "";
-        if (skill.createdAt?.toDate) {
-          const d = skill.createdAt.toDate();
-          dateStr = ` | Added on ${d.toLocaleDateString()} ${d.toLocaleTimeString()}`;
-        }
+  if (skillsToRender.length === 0) {
+    const li = document.createElement("li");
+    li.textContent = "😕 No matching skills found.";
+    skillList.appendChild(li);
+    return;
+  }
 
-        li.innerHTML = `
-          ${skill.email}: Offers ${skill.offered} | Wants ${skill.requested}${dateStr}
-          ${skill.email !== user.email
-            ? `<button onclick="window.location.href='chat.html?partner=${skill.email}'">Chat</button>`
-            : ''}
-        `;
+  skillsToRender.forEach(skill => {
+    const li = document.createElement("li");
+
+    let dateStr = "";
+    if (skill.createdAt?.toDate) {
+      const d = skill.createdAt.toDate();
+      dateStr = ` | Added on ${d.toLocaleDateString()} ${d.toLocaleTimeString()}`;
+    }
+
+    li.innerHTML = `
+      ${skill.email}: Offers ${skill.offered} | Wants ${skill.requested}${dateStr}
+      ${skill.email !== auth.currentUser.email
+        ? `<button onclick="window.location.href='chat.html?partner=${skill.email}'">Chat</button>`
+        : ''}
+    `;
+
+    skillList.appendChild(li);
+  });
+}
+
 
         li.innerHTML += `
   <button onclick="window.location.href='review.html?user=${skill.email}'">Rate</button>
@@ -135,5 +152,29 @@ onAuthStateChanged(auth, (user) => {
 
     // Start listening for message notifications
     listenForNewMessages(user.email);
+
+    try {
+  onSnapshot(skillsRef, (snapshot) => {
+    allSkills = snapshot.docs.map(doc => doc.data());
+    renderSkills(allSkills);
+  });
+} catch (err) {
+  skillList.innerHTML = `<li>⚠️ Error loading skills. Try again later.</li>`;
+}
+
+try {
+  await addDoc(collection(db, "skills"), {
+    email: user.email,
+    offered,
+    requested,
+    createdAt: new Date()
+  });
+
+  alert("Skill added successfully!");
+  form.reset();
+} catch (error) {
+  alert("⚠️ Failed to add skill. Please try again.");
+}
+
   }
 });

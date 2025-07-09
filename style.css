@@ -241,3 +241,12 @@ button:hover {
     right: 10px;
   }
 }
+
+li {
+  margin-bottom: 0.8rem;
+}
+
+li.error {
+  color: crimson;
+  font-style: italic;
+}
