@@ -44,8 +44,11 @@ onAuthStateChanged(auth, (user) => {
           dateStr = ` | Added on ${d.toLocaleDateString()} ${d.toLocaleTimeString()}`;
         }
 
-        li.textContent = `${skill.email}: Offers ${skill.offered} | Wants ${skill.requested}${dateStr}`;
-        skillList.appendChild(li);
+        li.innerHTML = `
+  ${skill.email}: Offers ${skill.offered} | Wants ${skill.requested}
+  <button onclick="window.location.href='chat.html?partner=${skill.email}'">Chat</button>
+`;
+
       });
     }
 

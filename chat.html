@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Chat – SkillSwap</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h2>Chat with <span id="chatPartnerName">...</span></h2>
+
+    <div id="chatBox" class="chat-box"></div>
+
+    <form id="chatForm">
+      <input type="text" id="chatInput" placeholder="Type a message..." required />
+      <button type="submit">Send</button>
+    </form>
+
+    <button onclick="window.location.href='dashboard.html'">← Back to Dashboard</button>
+  </div>
+
+  <script type="module" src="firebase.js"></script>
+  <script type="module" src="js/chat.js"></script>
+</body>
+</html>
