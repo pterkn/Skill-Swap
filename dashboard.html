@@ -6,6 +6,7 @@
   <title>SkillSwap Dashboard</title>
   <link rel="stylesheet" href="style.css">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
 </head>
 
@@ -33,6 +34,21 @@
     <input type="text" id="searchBar" placeholder="Search skills..." />
     <ul id="skillList"></ul>
   </div>
+
+  <div class="dashboard-grid">
+  <div>
+    <form> ... </form>
+    <input type="text" id="searchBar" placeholder="Search skills..." />
+    <ul id="skillList"></ul>
+  </div>
+
+  <aside>
+    <h3>Your Info</h3>
+    <p>Welcome back, <strong id="userEmail"></strong></p>
+    <button id="logoutBtn">Logout</button>
+  </aside>
+</div>
+
 
   <script type="module" src="firebase.js"></script>
   <script type="module" src="js/dashboard.js"></script>
