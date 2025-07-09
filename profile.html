@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>My Profile – SkillSwap</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h2>My Profile</h2>
+
+    <form id="profileForm">
+      <textarea id="bio" placeholder="Write a short bio..." required></textarea>
+      <input type="text" id="offeredSkill" placeholder="Skill You Offer" required />
+      <input type="text" id="requestedSkill" placeholder="Skill You Want" required />
+      <button type="submit">Save Profile</button>
+    </form>
+  </div>
+
+  <script type="module" src="firebase.js"></script>
+  <script type="module" src="js/profile.js"></script>
+</body>
+</html>
