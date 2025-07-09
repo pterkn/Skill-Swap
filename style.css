@@ -250,3 +250,14 @@ li.error {
   color: crimson;
   font-style: italic;
 }
+
+.spinner {
+  text-align: center;
+  font-size: 1.1rem;
+  color: #555;
+  padding: 1rem 0;
+}
+
+.hidden {
+  display: none;
+}

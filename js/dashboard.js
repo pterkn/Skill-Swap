@@ -3,6 +3,35 @@ import { db, auth, dbRealtime } from "../firebase.js";
 import {
   collection,
   addDoc,
+
+  const loading = document.getElementById("loading");
+loading.classList.remove("hidden");
+
+onSnapshot(skillsRef, (snapshot) => {
+  allSkills = snapshot.docs.map(doc => doc.data());
+  renderSkills(allSkills);
+  loading.classList.add("hidden"); // Hide when done
+});
+
+loading.classList.remove("hidden"); // Show while submitting
+
+try {
+  await addDoc(collection(db, "skills"), {
+    email: user.email,
+    offered,
+    requested,
+    createdAt: new Date()
+  });
+
+  alert("Skill added successfully!");
+  form.reset();
+} catch (error) {
+  alert("⚠️ Failed to add skill.");
+}
+
+loading.classList.add("hidden"); // Hide after submit
+
+
   onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.11.1/firebase-firestore.js";
 import {
