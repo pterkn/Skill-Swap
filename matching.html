@@ -3,25 +3,37 @@
 <head>
   <meta charset="UTF-8">
   <title>Skill Matches – SkillSwap</title>
+
+  <!-- Fonts & Styling -->
   <link rel="stylesheet" href="style.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter&family=Playfair+Display&display=swap" rel="stylesheet">
-<link rel="icon" href="favicon.png" type="image/png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
+  <!-- Favicon -->
+  <link rel="icon" href="favicon.png" type="image/png">
 </head>
-<body>
-    <header class="site-header">
-  <img src="logo.png" alt="SkillSwap Logo" class="logo" />
-  <h1 class="site-title">SkillSwap</h1>
-</header>
 
-  <div class="container">
+<body>
+  <!-- Header -->
+  <header class="site-header">
+    <div class="header-container">
+      <img src="logo.png" alt="SkillSwap Logo" class="logo" />
+      <h1 class="site-title">
+        <a href="dashboard.html">SkillSwap</a>
+      </h1>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container">
     <h2>Your Skill Matches</h2>
     <ul id="matchList">
       <li>Loading matches...</li>
     </ul>
     <button onclick="window.location.href='dashboard.html'">← Back to Dashboard</button>
-  </div>
+  </main>
 
+  <!-- Scripts -->
   <script type="module" src="firebase.js"></script>
   <script type="module" src="js/matching.js"></script>
 </body>
