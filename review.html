@@ -3,25 +3,35 @@
 <head>
   <meta charset="UTF-8" />
   <title>Leave a Review – SkillSwap</title>
+
+  <!-- Styles & Fonts -->
   <link rel="stylesheet" href="style.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter&family=Playfair+Display&display=swap" rel="stylesheet">
-<link rel="icon" href="favicon.png" type="image/png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
+  <!-- Favicon -->
+  <link rel="icon" href="favicon.png" type="image/png" />
 </head>
-<body>
-    <header class="site-header">
-  <img src="logo.png" alt="SkillSwap Logo" class="logo" />
-  <h1 class="site-title">SkillSwap</h1>
-</header>
 
-  <div class="container">
+<body>
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="header-container">
+      <img src="logo.png" alt="SkillSwap Logo" class="logo" />
+      <h1 class="site-title">
+        <a href="dashboard.html">SkillSwap</a>
+      </h1>
+    </div>
+  </header>
+
+  <!-- Review Form -->
+  <main class="container">
     <h2>Rate Your Skill Partner</h2>
 
     <form id="reviewForm">
       <label for="stars">Rating:</label>
-      <div id="starRating">
-        ★★★★★
-      </div>
+      <div id="starRating">★★★★★</div>
       <input type="hidden" id="stars" value="0" required />
 
       <label for="comment">Comment:</label>
@@ -31,9 +41,11 @@
     </form>
 
     <button onclick="window.location.href='dashboard.html'">← Back to Dashboard</button>
-  </div>
+  </main>
 
+  <!-- Scripts -->
   <script type="module" src="firebase.js"></script>
   <script type="module" src="js/review.js"></script>
+
 </body>
 </html>
