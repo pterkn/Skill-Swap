@@ -1,68 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <title>SkillSwap Dashboard</title>
-  <link rel="stylesheet" href="style.css">
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display&display=swap" rel="stylesheet">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<link href="https://fonts.googleapis.com/css2?family=Inter&family=Playfair+Display&display=swap" rel="stylesheet">
-<link rel="icon" href="favicon.png" type="image/png">
 
+  <!-- Fonts & Styles -->
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter&family=Playfair+Display&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+  <!-- Favicon -->
+  <link rel="icon" href="favicon.png" type="image/png">
 </head>
 
 <body>
+  <!-- Header -->
   <header class="site-header">
-  <h1 class="site-title">
-    <a href="dashboard.html">SkillSwap</a>
-  </h1>
-</header>
+    <div class="header-container">
+      <img src="logo.png" alt="SkillSwap Logo" class="logo" />
+      <h1 class="site-title">
+        <a href="dashboard.html">SkillSwap</a>
+      </h1>
+    </div>
+  </header>
 
+  <!-- Dashboard Grid -->
+  <main class="dashboard-grid">
+    <!-- Main Content -->
+    <section class="container">
+      <h2>Welcome to SkillSwap</h2>
 
-  <div class="container">
-    <div style="display: flex; justify-content: space-between; align-items: center;"></div>
-    <h2>Welcome to SkillSwap</h2>
+      <button id="logoutBtn" class="logout-btn">Logout</button>
 
-    <button id="logoutBtn">Logout</button>
+      <form>
+        <input type="text" placeholder="Skill You Offer" required>
+        <input type="text" placeholder="Skill You Want" required>
+        <button type="submit">Add Skill</button>
+      </form>
 
-    <form>
-      <input type="text" placeholder="Skill You Offer" required>
-      <input type="text" placeholder="Skill You Want" required>
-      <button type="submit">Add Skill</button>
-    </form>
+      <h3>Community Skill Listings</h3>
+      <input type="text" id="searchBar" placeholder="Search skills..." />
+      <ul id="skillList"></ul>
+      <div id="loading" class="spinner hidden">Loading...</div>
+    </section>
 
-    <h3>Community Skill Listings</h3>
-    <input type="text" id="searchBar" placeholder="Search skills..." />
-    <ul id="skillList"></ul>
-    <div id="loading" class="spinner hidden">Loading...</div>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <h3>Your Info</h3>
+      <p>Welcome back, <strong id="userEmail"></strong></p>
+      <button id="logoutBtnSidebar" class="logout-btn">Logout</button>
+    </aside>
+  </main>
 
-  </div>
-
-  <div class="dashboard-grid">
-  <div>
-    <form> ... </form>
-    <input type="text" id="searchBar" placeholder="Search skills..." />
-    <ul id="skillList"></ul>
-  </div>
-
-  <div id="loading" class="spinner hidden">
-  <img src="loader.gif" alt="Loading..." width="40" />
-</div>
-
-
-  <aside>
-    <h3>Your Info</h3>
-    <p>Welcome back, <strong id="userEmail"></strong></p>
-    <button id="logoutBtn">Logout</button>
-  </aside>
-</div>
-
-
-  <script type="module" src="firebase.js"></script>
-  <script type="module" src="js/dashboard.js"></script>
+  <!-- Toast Notification -->
   <div id="toast" class="toast hidden">New notification!</div>
 
+  <!-- Scripts -->
+  <script type="module" src="firebase.js"></script>
+  <script type="module" src="js/dashboard.js"></script>
 </body>
-
 </html>
