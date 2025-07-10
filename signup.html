@@ -1,55 +1,56 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>SkillSwap Sign Up</title>
-  <link rel="stylesheet" href="style.css">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Inter&family=Playfair+Display&display=swap" rel="stylesheet">
-<link rel="icon" href="favicon.png" type="image/png">
 
+  <!-- Fonts & Styling -->
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter&family=Playfair+Display&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+  <!-- Favicon -->
+  <link rel="icon" href="favicon.png" type="image/png">
 </head>
 
 <body>
-  <header class="site-header">
-  <img src="logo.png" alt="SkillSwap Logo" class="logo" />
-  <h1 class="site-title">SkillSwap</h1>
-</header>
 
+  <!-- Header -->
   <header class="site-header">
-  <h1 class="site-title">
-    <a href="dashboard.html">SkillSwap</a>
-  </h1>
-</header>
->
+    <div class="header-container">
+      <img src="logo.png" alt="SkillSwap Logo" class="logo" />
+      <h1 class="site-title">
+        <a href="dashboard.html">SkillSwap</a>
+      </h1>
+    </div>
+  </header>
 
-  <div class="container">
+  <!-- Signup Form -->
+  <main class="container">
     <h2>Create Your Account</h2>
 
     <form id="signupForm">
-  <input type="email" id="signupEmail" placeholder="Email" required>
+      <input type="email" id="signupEmail" placeholder="Email" required />
 
-  <input type="password" id="signupPassword" placeholder="Password" required>
-  <div id="passwordStrength" class="feedback"></div> <!-- Displays password strength feedback to the user -->
-  <div id="passwordError" class="feedback"></div> <!-- Displays error if password is too weak -->
-<div id="passwordStrengthBar" class="progress-bar">
-  <div id="strengthFill" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
-</div> <!-- /passwordStrengthBar -->
+      <input type="password" id="signupPassword" placeholder="Password" required />
+      <div id="passwordStrength" class="feedback"></div>
+      <div id="passwordError" class="feedback"></div>
 
-  <input type="password" id="confirmPassword" placeholder="Confirm Password" required>
-  <div id="confirmError" class="feedback"></div> <!--  Mismatch warning -->
+      <div id="passwordStrengthBar" class="progress-bar">
+        <div id="strengthFill" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+      </div>
 
-  <button type="submit">Sign Up</button>
-</form>
+      <input type="password" id="confirmPassword" placeholder="Confirm Password" required />
+      <div id="confirmError" class="feedback"></div>
 
+      <button type="submit">Sign Up</button>
+    </form>
 
     <p>Already have an account? <a href="index.html">Login</a></p>
-  </div>
+  </main>
 
+  <!-- Scripts -->
   <script type="module" src="firebase.js"></script>
   <script type="module" src="js/auth.js"></script>
-
 </body>
-
 </html>
