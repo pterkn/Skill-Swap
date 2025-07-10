@@ -1,28 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>My Profile – SkillSwap</title>
-  <link rel="stylesheet" href="style.css">
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Inter&family=Playfair+Display&display=swap" rel="stylesheet">
-<link rel="icon" href="favicon.png" type="image/png">
 
+  <!-- Styles & Fonts -->
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter&family=Playfair+Display&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+  <!-- Favicon -->
+  <link rel="icon" href="favicon.png" type="image/png" />
 </head>
+
 <body>
-    <header class="site-header">
-  <img src="logo.png" alt="SkillSwap Logo" class="logo" />
-  <h1 class="site-title">SkillSwap</h1>
-</header>
 
-    <header class="site-header">
-  <h1 class="site-title">
-    <a href="dashboard.html">SkillSwap</a>
-  </h1>
-</header>
+  <!-- Header -->
+  <header class="site-header">
+    <div class="header-container">
+      <img src="logo.png" alt="SkillSwap Logo" class="logo" />
+      <h1 class="site-title">
+        <a href="dashboard.html">SkillSwap</a>
+      </h1>
+    </div>
+  </header>
 
-
-  <div class="container">
+  <!-- Main Content -->
+  <main class="container">
     <h2>My Profile</h2>
 
     <form id="profileForm">
@@ -31,11 +35,11 @@
       <input type="text" id="requestedSkill" placeholder="Skill You Want" required />
       <button type="submit">Save Profile</button>
     </form>
-  </div>
 
-  <p>Average Rating: <span id="avgRating">Loading...</span></p>
+    <p>Average Rating: <span id="avgRating">Loading...</span></p>
+  </main>
 
-
+  <!-- Scripts -->
   <script type="module" src="firebase.js"></script>
   <script type="module" src="js/profile.js"></script>
 </body>
