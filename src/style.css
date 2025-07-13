@@ -58,9 +58,11 @@ body {
 }
 
 .logo {
-  height: 40px;
-  margin-right: 10px;
+  height: 60px;
+  display: block;
+  margin: 0 auto 1rem;
 }
+
 
 .header-left {
   display: flex;

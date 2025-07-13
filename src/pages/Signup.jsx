@@ -51,6 +51,7 @@ export default function Signup() {
     <>
       <Header />
       <div className="container">
+        <img src="/logo.png" alt="SkillSwap Logo" className="logo" style={{ display: 'block', margin: 'auto', height: '60px' }} />
         <h2>Create Your Account</h2>
         <form onSubmit={handleSubmit}>
           <input
