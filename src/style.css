@@ -1,0 +1,230 @@
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: #fff;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 2000;
+}
+.toast.info { background-color: #1976d2; }
+.toast.success { background-color: #388e3c; }
+.toast.error { background-color: #d32f2f; }
+
+.stars .star {
+  font-size: 2rem;
+  color: #ccc;
+  cursor: pointer;
+}
+.stars .filled {
+  color: gold;
+}
+
+/* General Layout */
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background-color: #f9f9f9;
+  color: #333;
+}
+
+.container {
+  max-width: 800px;
+  margin: auto;
+  padding: 2rem;
+}
+
+/* Header */
+.site-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #0d47a1;
+  color: white;
+  padding: 1rem 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.site-title a {
+  color: white;
+  text-decoration: none;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.8rem;
+}
+
+.logo {
+  height: 40px;
+  margin-right: 10px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+/* Form Fields */
+input,
+textarea,
+button {
+  display: block;
+  width: 100%;
+  margin: 0.5rem 0;
+  padding: 0.7rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+button {
+  background: #1976d2;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+button:hover {
+  background: #0d47a1;
+}
+
+/* Lists */
+ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+li {
+  background: #fff;
+  border: 1px solid #ddd;
+  padding: 1rem;
+  margin-bottom: 0.8rem;
+  border-radius: 6px;
+}
+
+/* Spinner / Loading */
+.spinner {
+  text-align: center;
+  font-size: 1.2rem;
+  color: #888;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #323232;
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  z-index: 2000;
+}
+
+.toast.info { background: #1976d2; }
+.toast.error { background: #d32f2f; }
+.toast.success { background: #388e3c; }
+
+/* Progress Bar */
+.progress-bar {
+  background: #eee;
+  border-radius: 6px;
+  height: 8px;
+  margin-top: -0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+#strengthFill {
+  background: #4caf50;
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+
+/* Stars */
+.stars .star {
+  font-size: 2rem;
+  color: #ccc;
+  cursor: pointer;
+  margin-right: 0.25rem;
+}
+
+.stars .filled {
+  color: gold;
+}
+
+/* Chat Layout */
+.chat-container {
+  max-width: 600px;
+}
+
+.chat-window {
+  background: #f1f1f1;
+  border-radius: 8px;
+  padding: 1rem;
+  height: 300px;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+}
+
+.chat-msg {
+  margin: 0.4rem 0;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  max-width: 80%;
+  word-wrap: break-word;
+}
+
+.chat-msg.own {
+  background: #bbdefb;
+  align-self: flex-end;
+  margin-left: auto;
+}
+
+.chat-msg.other {
+  background: #fff;
+  border: 1px solid #ddd;
+}
+
+.chat-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.chat-form input {
+  flex: 1;
+  padding: 0.7rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.chat-form button {
+  width: auto;
+  padding: 0.7rem 1rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+
+  input, button, textarea {
+    font-size: 1rem;
+  }
+
+  .site-title {
+    font-size: 1.4rem;
+  }
+
+  .chat-window {
+    height: 250px;
+  }
+}
