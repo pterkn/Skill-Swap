@@ -5,59 +5,68 @@ const theme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#023020',        // Hunter Green
-      contrastText: '#FEFFEC' // Ivory
+      main: '#023020', // Hunter Green
+      contrastText: '#FEFFEC', // Ivory text
     },
     secondary: {
-      main: '#7FB77E',         // Soft green accent (optional)
-      contrastText: '#fff'
+      main: '#097969', // Accent green
     },
     background: {
-      default: '#FEFFEC',     // Ivory
-      paper: '#ffffff'
+      default: '#FEFFEC', // Global background
+      paper: '#ffffff',   // Card background
     },
     text: {
-      primary: '#023020',     // Hunter Green for text
-      secondary: '#4d4d4d'
+      primary: '#333', // Dark text
     },
     error: {
-      main: '#d32f2f'
-    }
+      main: '#d32f2f', // Error red
+    },
+    success: {
+      main: '#4caf50',
+    },
   },
+
   typography: {
     fontFamily: 'Georgia, serif',
-    h1: { fontWeight: 700 },
-    h2: { fontWeight: 600 },
-    h3: { fontWeight: 600 },
-    button: { textTransform: 'none' }
+    h1: { fontWeight: 'bold' },
+    h2: { fontWeight: 'bold' },
+    h3: { fontWeight: 'bold' },
+    button: { textTransform: 'none' },
   },
+
+  shape: {
+    borderRadius: 8, // Softer buttons and cards
+  },
+
   components: {
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: 8,
-          padding: '0.6rem 1.2rem',
           fontWeight: 'bold',
-        }
-      }
+          padding: '0.6rem 1.2rem',
+          boxShadow: 'none',
+          '&:hover': {
+            backgroundColor: '#04532a',
+          },
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+        },
+      },
     },
     MuiCard: {
       styleOverrides: {
         root: {
+          borderRadius: 8,
           backgroundColor: '#FEFFEC',
-          borderRadius: 12
-        }
-      }
+        },
+      },
     },
-    MuiTextField: {
-      styleOverrides: {
-        root: {
-          backgroundColor: '#ffffff',
-          borderRadius: 6
-        }
-      }
-    }
-  }
+  },
 });
 
 export default theme;
