@@ -1,4 +1,12 @@
-// src/pages/Signup.jsx
+import {
+  TextField,
+  Button,
+  Container,
+  Typography,
+  Box,
+  Alert
+} from '@mui/material';
+
 import React, { useState } from 'react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useNavigate, Link } from 'react-router-dom';
@@ -48,58 +56,89 @@ export default function Signup() {
   };
 
   return (
-    <>
-      <Header />
-      <div className="container">
-        <img src="/logo.png" alt="SkillSwap Logo" className="logo" style={{ display: 'block', margin: 'auto', height: '60px' }} />
-        <h2>Create Your Account</h2>
-        <form onSubmit={handleSubmit}>
-          <input
+  <>
+    <Header />
+    <Container maxWidth="xs">
+      <Box mt={4} display="flex" flexDirection="column" alignItems="center">
+        <img
+          src="/logo.png"
+          alt="SkillSwap Logo"
+          style={{ height: '60px', marginBottom: '1rem' }}
+        />
+        <Typography variant="h5" gutterBottom>
+          Create Your Account
+        </Typography>
+
+        <form onSubmit={handleSubmit} style={{ width: '100%' }}>
+          <TextField
+            label="Email"
             type="email"
-            placeholder="Email"
+            fullWidth
+            margin="normal"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
 
-          <input
+          <TextField
+            label="Password"
             type="password"
-            placeholder="Password"
+            fullWidth
+            margin="normal"
             value={password}
             onChange={handlePasswordChange}
             required
           />
 
           {/* Password Strength Bar */}
-          <div className="progress-bar">
-            <div
-              id="strengthFill"
-              style={{ width: `${(strength / 4) * 100}%` }}
-            ></div>
-          </div>
+          <Box
+            height="8px"
+            width="100%"
+            bgcolor="#ccc"
+            borderRadius="4px"
+            my={1}
+          >
+            <Box
+              height="100%"
+              width={`${(strength / 4) * 100}%`}
+              bgcolor={strength < 2 ? 'red' : strength < 4 ? 'orange' : 'green'}
+              borderRadius="4px"
+              transition="width 0.3s ease-in-out"
+            />
+          </Box>
 
-          <input
+          <TextField
+            label="Confirm Password"
             type="password"
-            placeholder="Confirm Password"
+            fullWidth
+            margin="normal"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             required
           />
 
-          <button type="submit">Sign Up</button>
+          <Button
+            variant="contained"
+            color="primary"
+            fullWidth
+            type="submit"
+            sx={{ mt: 2 }}
+          >
+            Sign Up
+          </Button>
         </form>
 
-        <p>
+        <Typography variant="body2" mt={2}>
           Already have an account? <Link to="/">Login</Link>
-        </p>
-      </div>
+        </Typography>
+      </Box>
+    </Container>
 
-      <Toast
-        message={toastMsg}
-        visible={showToast}
-        type="error"
-        onHide={() => setShowToast(false)}
-      />
-    </>
-  );
-}
+    <Toast
+      message={toastMsg}
+      visible={showToast}
+      type="error"
+      onHide={() => setShowToast(false)}
+    />
+  </>
+);
