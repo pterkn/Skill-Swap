@@ -1,27 +1,36 @@
-
-import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
-import Chat from './pages/Chat';
 import Profile from './pages/Profile';
+import Chat from './pages/Chat';
 import Review from './pages/Review';
 import Matching from './pages/Matching';
+import PrivateRoute from './components/PrivateRoute';
 
-function App() {
+export default function App() {
   return (
     <Routes>
+      {/* Public */}
       <Route path="/" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/chat" element={<Chat />} />
-      <Route path="/profile" element={<Profile />} />
-      <Route path="/review" element={<Review />} />
-      <Route path="/matching" element={<Matching />} />
+
+      {/* Protected */}
+      <Route path="/dashboard" element={
+        <PrivateRoute><Dashboard /></PrivateRoute>
+      } />
+      <Route path="/chat" element={
+        <PrivateRoute><Chat /></PrivateRoute>
+      } />
+      <Route path="/profile" element={
+        <PrivateRoute><Profile /></PrivateRoute>
+      } />
+      <Route path="/review" element={
+        <PrivateRoute><Review /></PrivateRoute>
+      } />
+      <Route path="/matching" element={
+        <PrivateRoute><Matching /></PrivateRoute>
+      } />
     </Routes>
   );
 }
-
-export default App;
