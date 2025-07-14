@@ -11,7 +11,11 @@ import {
   CardActions,
   Divider,
   Tabs,
-  Tab
+  Tab,
+  MenuItem,
+  Select,
+  InputLabel,
+  FormControl
 } from '@mui/material';
 import BuildIcon from '@mui/icons-material/Build';
 import CodeIcon from '@mui/icons-material/Code';
@@ -34,48 +38,45 @@ export default function Dashboard() {
   const [skills, setSkills] = useState([]);
   const [offered, setOffered] = useState('');
   const [requested, setRequested] = useState('');
+  const [category, setCategory] = useState('other');
   const [search, setSearch] = useState('');
   const [toastMsg, setToastMsg] = useState('');
   const [showToast, setShowToast] = useState(false);
   const [tab, setTab] = useState('community');
-  const [category, setCategory] = useState('all');
 
   const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (!user) {
-        navigate('/');
-        return;
-      }
+    const user = auth.currentUser;
+    if (!user) {
+      navigate('/');
+      return;
+    }
 
-      const q = query(collection(db, 'skills'), orderBy('offered'));
-      const unsub = onSnapshot(q, (snap) => {
-        const list = snap.docs.map((doc) => doc.data());
-        setSkills(list);
-      });
-
-      return () => unsub();
+    const q = query(collection(db, 'skills'), orderBy('offered'));
+    const unsub = onSnapshot(q, (snap) => {
+      const list = snap.docs.map((doc) => doc.data());
+      setSkills(list);
     });
 
-    return () => unsubscribe();
+    return () => unsub();
   }, [navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const user = auth.currentUser;
 
-    if (!user) return;
-
     try {
       await addDoc(collection(db, 'skills'), {
         email: user.email,
         offered,
         requested,
+        category,
         createdAt: new Date()
       });
       setOffered('');
       setRequested('');
+      setCategory('other');
       setToastMsg('✅ Skill added!');
       setShowToast(true);
     } catch (err) {
@@ -86,36 +87,23 @@ export default function Dashboard() {
 
   const userEmail = auth.currentUser?.email || '';
 
-  const filteredSkills = skills
-    .filter((skill) => {
-      const emailMatch = tab === 'mine'
-        ? skill.email === userEmail
-        : skill.email !== userEmail;
+  const filteredSkills = skills.filter((skill) => {
+    const emailMatch = tab === 'mine'
+      ? skill.email === userEmail
+      : skill.email !== userEmail;
 
-      const queryMatch = [skill.offered, skill.requested]
-        .join(' ')
-        .toLowerCase()
-        .includes(search.toLowerCase());
+    const queryMatch = [skill.offered, skill.requested]
+      .join(' ')
+      .toLowerCase()
+      .includes(search.toLowerCase());
 
-      const s = skill.offered.toLowerCase();
-      const categoryMatch =
-        category === 'all' ||
-        (category === 'code' && s.includes('code')) ||
-        (category === 'design' && s.includes('design')) ||
-        (category === 'teaching' && s.includes('teach')) ||
-        (category === 'other' &&
-          !s.includes('code') &&
-          !s.includes('design') &&
-          !s.includes('teach'));
+    return emailMatch && queryMatch;
+  });
 
-      return emailMatch && queryMatch && categoryMatch;
-    });
-
-  const getSkillIcon = (skill) => {
-    const s = skill.toLowerCase();
-    if (s.includes('code') || s.includes('programming')) return <CodeIcon fontSize="small" sx={{ mr: 1 }} />;
-    if (s.includes('design')) return <DesignServicesIcon fontSize="small" sx={{ mr: 1 }} />;
-    if (s.includes('teach') || s.includes('language')) return <SchoolIcon fontSize="small" sx={{ mr: 1 }} />;
+  const getSkillIcon = (category) => {
+    if (category === 'code') return <CodeIcon fontSize="small" sx={{ mr: 1 }} />;
+    if (category === 'design') return <DesignServicesIcon fontSize="small" sx={{ mr: 1 }} />;
+    if (category === 'teaching') return <SchoolIcon fontSize="small" sx={{ mr: 1 }} />;
     return <BuildIcon fontSize="small" sx={{ mr: 1 }} />;
   };
 
@@ -149,6 +137,19 @@ export default function Dashboard() {
             required
             fullWidth
           />
+          <FormControl fullWidth>
+            <InputLabel>Category</InputLabel>
+            <Select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              label="Category"
+            >
+              <MenuItem value="design">Design</MenuItem>
+              <MenuItem value="code">Code</MenuItem>
+              <MenuItem value="teaching">Teaching</MenuItem>
+              <MenuItem value="other">Other</MenuItem>
+            </Select>
+          </FormControl>
           <Button variant="contained" type="submit">
             Add
           </Button>
@@ -167,19 +168,6 @@ export default function Dashboard() {
             <Tab value="community" label="🌐 Community Skills" />
             <Tab value="mine" label="👤 My Skills" />
           </Tabs>
-        </Box>
-
-        <Box mb={3} display="flex" gap={1} flexWrap="wrap" justifyContent="center">
-          {['all', 'code', 'design', 'teaching', 'other'].map((cat) => (
-            <Button
-              key={cat}
-              variant={category === cat ? 'contained' : 'outlined'}
-              size="small"
-              onClick={() => setCategory(cat)}
-            >
-              {cat === 'all' ? 'All' : cat.charAt(0).toUpperCase() + cat.slice(1)}
-            </Button>
-          ))}
         </Box>
 
         <Grid container spacing={3}>
@@ -214,27 +202,31 @@ export default function Dashboard() {
                       </Box>
 
                       <Typography>
-                        <strong>Offers:</strong> {getSkillIcon(skill.offered)} {skill.offered}
+                        <strong>Offers:</strong> {getSkillIcon(skill.category)} {skill.offered}
                       </Typography>
                       <Typography>
-                        <strong>Wants:</strong> {getSkillIcon(skill.requested)} {skill.requested}
+                        <strong>Wants:</strong> {getSkillIcon(skill.category)} {skill.requested}
                       </Typography>
                     </CardContent>
 
                     <Divider />
 
                     <CardActions>
-                      {skill.email !== auth.currentUser?.email && (
+                      {skill.email !== auth.currentUser.email && (
                         <>
                           <Button
                             size="small"
-                            onClick={() => navigate(`/chat?partner=${skill.email}`)}
+                            onClick={() =>
+                              navigate(`/chat?partner=${skill.email}`)
+                            }
                           >
                             Chat
                           </Button>
                           <Button
                             size="small"
-                            onClick={() => navigate(`/review?user=${skill.email}`)}
+                            onClick={() =>
+                              navigate(`/review?user=${skill.email}`)
+                            }
                           >
                             Rate
                           </Button>

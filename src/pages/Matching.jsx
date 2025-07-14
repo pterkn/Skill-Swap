@@ -9,9 +9,11 @@ import {
   Box,
   Avatar,
   Tabs,
-  Tab
+  Tab,
+  ToggleButton,
+  ToggleButtonGroup
 } from '@mui/material';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -22,13 +24,15 @@ export default function Matching() {
   const [myOffered, setMyOffered] = useState([]);
   const [myRequested, setMyRequested] = useState([]);
   const [tab, setTab] = useState('offer');
+  const [category, setCategory] = useState('all');
 
   const user = auth.currentUser;
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchSkills = async () => {
-      const snap = await getDocs(collection(db, 'skills'));
+      const q = query(collection(db, 'skills'), orderBy('createdAt', 'desc'));
+      const snap = await getDocs(q);
       const all = snap.docs.map(doc => doc.data());
       setSkills(all);
 
@@ -44,9 +48,14 @@ export default function Matching() {
     const offered = s.offered.toLowerCase();
     const requested = s.requested.toLowerCase();
 
-    return tab === 'offer'
+    const matchesTab = tab === 'offer'
       ? myRequested.includes(offered)
       : myOffered.includes(requested);
+
+    const matchesCategory =
+      category === 'all' || s.category === category;
+
+    return matchesTab && matchesCategory;
   });
 
   return (
@@ -62,6 +71,22 @@ export default function Matching() {
             <Tab value="offer" label="They Offer What I Want" />
             <Tab value="request" label="They Want What I Offer" />
           </Tabs>
+        </Box>
+
+        <Box mb={3} display="flex" justifyContent="center">
+          <ToggleButtonGroup
+            value={category}
+            exclusive
+            onChange={(e, val) => setCategory(val)}
+            size="small"
+            color="primary"
+          >
+            <ToggleButton value="all">All</ToggleButton>
+            <ToggleButton value="design">Design</ToggleButton>
+            <ToggleButton value="code">Code</ToggleButton>
+            <ToggleButton value="teaching">Teaching</ToggleButton>
+            <ToggleButton value="other">Other</ToggleButton>
+          </ToggleButtonGroup>
         </Box>
 
         <Grid container spacing={3}>
@@ -89,6 +114,9 @@ export default function Matching() {
 
                       <Typography><strong>Offers:</strong> {m.offered}</Typography>
                       <Typography><strong>Wants:</strong> {m.requested}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Category: {m.category || 'N/A'}
+                      </Typography>
                     </CardContent>
                     <Box display="flex" justifyContent="flex-end" p={2} gap={1}>
                       <Button
