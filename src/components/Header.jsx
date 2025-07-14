@@ -25,22 +25,26 @@ export default function Header({ showLogout = false }) {
           </Typography>
         </Box>
 
+        <Box sx={{ flexGrow: 1 }} />
+
         {showLogout && (
-          <Button
-            variant="contained"
-            color="error"
-            size="small"
-            sx={{
-              minWidth: '100px',
-              padding: '6px 12px',
-              fontWeight: 'bold',
-              borderRadius: '8px',
-              textTransform: 'none'
-            }}
-            onClick={handleLogout}
-          >
-            Logout
-          </Button>
+          <Box display="flex" justifyContent="flex-end">
+            <Button
+              variant="contained"
+              color="error"
+              size="small"
+              sx={{
+                minWidth: '100px',
+                padding: '6px 12px',
+                fontWeight: 'bold',
+                borderRadius: '8px',
+                textTransform: 'none'
+              }}
+              onClick={handleLogout}
+            >
+              Logout
+            </Button>
+          </Box>
         )}
       </Toolbar>
     </AppBar>
