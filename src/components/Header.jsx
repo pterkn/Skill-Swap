@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { auth, dbRealtime } from '../firebase';
 import {
@@ -14,10 +14,8 @@ import {
   Tooltip
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
-import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Toast from './Toast';
 import { ref, onChildAdded, remove } from 'firebase/database';
-import { ColorModeContext } from '../ThemeContext';
 
 export default function Header({ showLogout = false }) {
   const navigate = useNavigate();
@@ -26,8 +24,6 @@ export default function Header({ showLogout = false }) {
   const [notifications, setNotifications] = useState([]);
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
-
-  const toggleColorMode = useContext(ColorModeContext);
 
   const handleLogout = async () => {
     await auth.signOut();
@@ -106,12 +102,6 @@ export default function Header({ showLogout = false }) {
           </Box>
 
           <Box display="flex" alignItems="center" gap={2}>
-            <Tooltip title="Toggle dark mode">
-              <IconButton onClick={toggleColorMode} color="inherit">
-                <Brightness4Icon />
-              </IconButton>
-            </Tooltip>
-
             <Tooltip title="Notifications">
               <IconButton color="inherit" onClick={handleNotifClick}>
                 <Badge badgeContent={notifications.length} color="error">
