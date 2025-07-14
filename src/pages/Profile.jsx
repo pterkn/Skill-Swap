@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import {
   Container,
@@ -11,7 +12,12 @@ import {
 } from '@mui/material';
 import { auth, db } from '../firebase';
 import Header from '../components/Header';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import {
+  collection,
+  query,
+  where,
+  getDocs
+} from 'firebase/firestore';
 
 export default function Profile() {
   const user = auth.currentUser;
@@ -22,12 +28,17 @@ export default function Profile() {
     const fetchRatings = async () => {
       if (!user) return;
 
-      const q = query(collection(db, 'reviews'), where('reviewee', '==', user.email));
+      const q = query(
+        collection(db, 'reviews'),
+        where('reviewee', '==', user.email)
+      );
       const snap = await getDocs(q);
       const reviews = snap.docs.map(doc => doc.data());
 
       const count = reviews.length;
-      const avg = count ? reviews.reduce((sum, r) => sum + r.rating, 0) / count : 0;
+      const avg = count
+        ? reviews.reduce((sum, r) => sum + r.rating, 0) / count
+        : 0;
 
       setAvgRating(avg);
       setReviewCount(count);
@@ -51,9 +62,17 @@ export default function Profile() {
                 />
                 <Typography variant="h6">{user?.email}</Typography>
                 <Divider sx={{ my: 2, width: '100%' }} />
+
                 <Typography variant="subtitle1">Average Rating</Typography>
-                <Rating value={avgRating} precision={0.5} readOnly sx={{ mt: 1 }} />
-                <Typography variant="caption">{avgRating.toFixed(1)} / 5 ({reviewCount} review{reviewCount !== 1 ? 's' : ''})</Typography>
+                <Rating
+                  value={avgRating}
+                  precision={0.5}
+                  readOnly
+                  sx={{ mt: 1 }}
+                />
+                <Typography variant="caption">
+                  {avgRating.toFixed(1)} / 5 ({reviewCount} review{reviewCount !== 1 ? 's' : ''})
+                </Typography>
               </Box>
             </CardContent>
           </Card>
