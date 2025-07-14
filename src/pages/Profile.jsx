@@ -1,132 +1,140 @@
-
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Typography,
   Box,
-  Card,
-  CardContent,
   Avatar,
   TextField,
   Button,
+  Grid,
+  Divider,
   Rating,
-  Divider
+  Card,
+  CardContent
 } from '@mui/material';
 import { auth, db } from '../firebase';
 import {
+  doc,
+  getDoc,
+  updateDoc,
   collection,
-  getDocs,
   query,
   where,
-  updateDoc,
-  doc
+  getDocs,
+  orderBy
 } from 'firebase/firestore';
 import Header from '../components/Header';
 
 export default function Profile() {
-  const [name, setName] = useState('');
-  const [bio, setBio] = useState('');
-  const [avgRating, setAvgRating] = useState(0);
-  const [reviewCount, setReviewCount] = useState(0);
-  const [editing, setEditing] = useState(false);
-  const user = auth.currentUser;
+  const [userData, setUserData] = useState({ name: '', bio: '' });
+  const [editMode, setEditMode] = useState(false);
+  const [reviews, setReviews] = useState([]);
+
+  const userEmail = auth.currentUser?.email;
 
   useEffect(() => {
     const fetchProfile = async () => {
-      const docRef = doc(db, 'profiles', user.email);
-      const snap = await getDocs(query(collection(db, 'profiles'), where('__name__', '==', user.email)));
-      const profile = snap.docs[0]?.data();
-      if (profile) {
-        setName(profile.name || '');
-        setBio(profile.bio || '');
-      }
+      const docRef = doc(db, 'users', userEmail);
+      const snap = await getDoc(docRef);
+      if (snap.exists()) setUserData(snap.data());
     };
 
-    const fetchRating = async () => {
-      const q = query(collection(db, 'reviews'), where('reviewee', '==', user.email));
+    const fetchReviews = async () => {
+      const q = query(
+        collection(db, 'reviews'),
+        where('reviewee', '==', userEmail),
+        orderBy('createdAt', 'desc')
+      );
       const snap = await getDocs(q);
-      const reviews = snap.docs.map((doc) => doc.data());
-      const total = reviews.reduce((sum, r) => sum + r.rating, 0);
-      setReviewCount(reviews.length);
-      setAvgRating(reviews.length ? total / reviews.length : 0);
+      const data = snap.docs.map(doc => doc.data());
+      setReviews(data);
     };
 
     fetchProfile();
-    fetchRating();
-  }, [user.email]);
+    fetchReviews();
+  }, [userEmail]);
 
-  const handleSave = async () => {
-    const docRef = doc(db, 'profiles', user.email);
-    await updateDoc(docRef, { name, bio });
-    setEditing(false);
+  const handleUpdate = async () => {
+    const docRef = doc(db, 'users', userEmail);
+    await updateDoc(docRef, userData);
+    setEditMode(false);
   };
+
+  const averageRating = reviews.length
+    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+    : 0;
 
   return (
     <>
       <Header showLogout={true} />
-      <Container maxWidth="sm" sx={{ mt: 4 }}>
-        <Card sx={{ backgroundColor: '#FEFFEC', p: 2 }}>
-          <CardContent>
-            <Box display="flex" flexDirection="column" alignItems="center">
-              <Avatar
-                src={`https://ui-avatars.com/api/?name=${user.email}`}
-                sx={{ width: 80, height: 80, mb: 2 }}
+      <Container maxWidth="sm">
+        <Box mt={6} textAlign="center">
+          <Avatar
+            src={`https://ui-avatars.com/api/?name=${userEmail}&background=023020&color=fff`}
+            sx={{ width: 80, height: 80, mx: 'auto', mb: 2 }}
+          />
+          <Typography variant="h5" sx={{ fontFamily: 'Georgia, serif', fontWeight: 'bold' }}>
+            {userEmail}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {reviews.length} Reviews • Avg. Rating:
+          </Typography>
+          <Rating value={averageRating} precision={0.5} readOnly />
+        </Box>
+
+        <Box mt={4}>
+          {editMode ? (
+            <>
+              <TextField
+                fullWidth
+                label="Name"
+                value={userData.name}
+                onChange={(e) => setUserData({ ...userData, name: e.target.value })}
+                margin="normal"
               />
-              <Typography variant="h6" fontFamily="Georgia, serif">
-                {user.email}
-              </Typography>
+              <TextField
+                fullWidth
+                label="Bio"
+                value={userData.bio}
+                onChange={(e) => setUserData({ ...userData, bio: e.target.value })}
+                multiline
+                rows={4}
+                margin="normal"
+              />
+              <Button variant="contained" onClick={handleUpdate} fullWidth sx={{ mt: 1 }}>
+                Save
+              </Button>
+            </>
+          ) : (
+            <>
+              <Typography variant="h6" mt={3}>Name</Typography>
+              <Typography>{userData.name || 'Not set'}</Typography>
+              <Typography variant="h6" mt={2}>Bio</Typography>
+              <Typography>{userData.bio || 'No bio provided.'}</Typography>
+              <Button onClick={() => setEditMode(true)} fullWidth sx={{ mt: 2 }}>
+                Edit Profile
+              </Button>
+            </>
+          )}
+        </Box>
 
-              <Box mt={2}>
-                <Rating value={avgRating} readOnly precision={0.5} />
-                <Typography variant="caption">
-                  {avgRating.toFixed(1)} / 5 from {reviewCount} reviews
-                </Typography>
-              </Box>
-            </Box>
-
-            <Divider sx={{ my: 2 }} />
-
-            {editing ? (
-              <>
-                <TextField
-                  label="Name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  fullWidth
-                  sx={{ mb: 2 }}
-                />
-                <TextField
-                  label="Bio"
-                  multiline
-                  rows={4}
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  fullWidth
-                  sx={{ mb: 2 }}
-                />
-                <Button variant="contained" onClick={handleSave} fullWidth>
-                  Save Changes
-                </Button>
-              </>
-            ) : (
-              <>
-                <Typography variant="subtitle1" fontWeight="bold">
-                  {name || 'No name set'}
-                </Typography>
-                <Typography variant="body2" mb={2}>
-                  {bio || 'No bio provided.'}
-                </Typography>
-                <Button
-                  variant="outlined"
-                  fullWidth
-                  onClick={() => setEditing(true)}
-                >
-                  Edit Profile
-                </Button>
-              </>
-            )}
-          </CardContent>
-        </Card>
+        <Box mt={6}>
+          <Typography variant="h6">Recent Reviews</Typography>
+          <Divider sx={{ my: 2 }} />
+          <Grid container spacing={2}>
+            {reviews.map((r, i) => (
+              <Grid item xs={12} key={i}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="subtitle2">{r.reviewer}</Typography>
+                    <Rating value={r.rating} readOnly size="small" />
+                    <Typography variant="body2" mt={1}>{r.comment}</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
       </Container>
     </>
   );

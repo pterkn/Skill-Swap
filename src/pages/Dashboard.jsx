@@ -86,10 +86,10 @@ export default function Dashboard() {
       setOffered('');
       setRequested('');
       setCategory('other');
-      setToastMsg(' Skill added!');
+      setToastMsg('✅ Skill added!');
       setShowToast(true);
     } catch (err) {
-      setToastMsg(' Failed to add skill.');
+      setToastMsg('❌ Failed to add skill.');
       setShowToast(true);
     }
   };
@@ -123,7 +123,9 @@ export default function Dashboard() {
       <Header showLogout={true} />
       <Container maxWidth="md">
         <Box mt={4} mb={2} textAlign="center">
-          <Typography variant="h4">Welcome to SkillSwap</Typography>
+          <Typography variant="h4" sx={{ color: 'primary.main', fontWeight: 'bold', fontFamily: 'Georgia, serif' }}>
+            Welcome to SkillSwap
+          </Typography>
         </Box>
 
         <Box
@@ -140,6 +142,7 @@ export default function Dashboard() {
             onChange={(e) => setOffered(e.target.value)}
             required
             fullWidth
+            variant="outlined"
           />
           <TextField
             label="Skill You Want"
@@ -147,6 +150,7 @@ export default function Dashboard() {
             onChange={(e) => setRequested(e.target.value)}
             required
             fullWidth
+            variant="outlined"
           />
           <FormControl fullWidth>
             <InputLabel>Category</InputLabel>
@@ -161,7 +165,7 @@ export default function Dashboard() {
               <MenuItem value="other">Other</MenuItem>
             </Select>
           </FormControl>
-          <Button variant="contained" type="submit">
+          <Button variant="contained" type="submit" color="primary">
             Add
           </Button>
         </Box>
@@ -171,6 +175,7 @@ export default function Dashboard() {
           fullWidth
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          variant="outlined"
           sx={{ mb: 3 }}
         />
 
@@ -199,7 +204,7 @@ export default function Dashboard() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: i * 0.05 }}
                   >
-                    <Card elevation={3}>
+                    <Card elevation={3} sx={{ backgroundColor: '#FEFFEC' }}>
                       <CardContent>
                         <Box display="flex" alignItems="center" mb={1}>
                           <img
@@ -232,17 +237,13 @@ export default function Dashboard() {
                           <>
                             <Button
                               size="small"
-                              onClick={() =>
-                                navigate(`/chat?partner=${skill.email}`)
-                              }
+                              onClick={() => navigate(`/chat?partner=${skill.email}`)}
                             >
                               Chat
                             </Button>
                             <Button
                               size="small"
-                              onClick={() =>
-                                navigate(`/review?user=${skill.email}`)
-                              }
+                              onClick={() => navigate(`/review?user=${skill.email}`)}
                             >
                               Rate
                             </Button>

@@ -1,15 +1,13 @@
-// src/pages/Login.jsx
 import React, { useState } from 'react';
 import {
   Container,
+  Typography,
   TextField,
   Button,
-  Typography,
-  Box,
-  Paper
+  Box
 } from '@mui/material';
-import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useNavigate, Link } from 'react-router-dom';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebase';
 import Header from '../components/Header';
 import Toast from '../components/Toast';
@@ -21,13 +19,13 @@ export default function Login() {
   const [showToast, setShowToast] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     try {
       await signInWithEmailAndPassword(auth, email, password);
       navigate('/dashboard');
     } catch (err) {
-      setToastMsg('Login failed. Check your credentials.');
+      setToastMsg('Login failed. Please try again.');
       setShowToast(true);
     }
   };
@@ -35,19 +33,28 @@ export default function Login() {
   return (
     <>
       <Header />
-      <Container maxWidth="sm" sx={{ mt: 6 }}>
-        <Paper elevation={3} sx={{ p: 4, backgroundColor: '#FEFFEC' }}>
-          <Typography variant="h5" gutterBottom sx={{ fontFamily: 'Georgia, serif' }}>
-            Login to SkillSwap
-          </Typography>
+      <Container maxWidth="sm">
+        <Box mt={6}>
+          <Box textAlign="center" mb={4}>
+            <img
+              src="/logo.png"
+              alt="SkillSwap Logo"
+              style={{ height: '60px', marginBottom: '1rem' }}
+            />
+            <Typography variant="h4" sx={{ fontFamily: 'Georgia, serif', color: 'primary.main', fontWeight: 'bold' }}>
+              Login to SkillSwap
+            </Typography>
+          </Box>
 
-          <Box component="form" onSubmit={handleSubmit}>
+          <form onSubmit={handleLogin}>
             <TextField
               label="Email"
-              value={email}
+              type="email"
               fullWidth
+              value={email}
               onChange={(e) => setEmail(e.target.value)}
-              sx={{ mb: 2 }}
+              margin="normal"
+              required
             />
             <TextField
               label="Password"
@@ -55,17 +62,27 @@ export default function Login() {
               fullWidth
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              sx={{ mb: 2 }}
+              margin="normal"
+              required
             />
-            <Button variant="contained" type="submit" fullWidth>
+
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              fullWidth
+              sx={{ mt: 2 }}
+            >
               Login
             </Button>
-          </Box>
+          </form>
 
-          <Typography variant="body2" mt={2}>
-            Don't have an account? <Link to="/signup">Sign up</Link>
-          </Typography>
-        </Paper>
+          <Box textAlign="center" mt={2}>
+            <Typography variant="body2">
+              Don’t have an account? <Link to="/signup">Sign Up</Link>
+            </Typography>
+          </Box>
+        </Box>
       </Container>
 
       <Toast

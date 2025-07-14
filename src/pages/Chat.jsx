@@ -1,247 +1,170 @@
-
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Container,
   Box,
-  Typography,
   TextField,
+  Typography,
   IconButton,
-  List,
-  ListItem,
-  ListItemText,
-  Paper,
   CircularProgress,
-  Divider,
   Avatar,
-  Tooltip,
-  Input,
+  Paper,
+  Button,
+  InputAdornment
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
-import DoneAllIcon from '@mui/icons-material/DoneAll';
-import AttachFileIcon from '@mui/icons-material/AttachFile';
+import ImageIcon from '@mui/icons-material/Image';
 import { useLocation } from 'react-router-dom';
-import { ref, push, onChildAdded, onValue, set } from 'firebase/database';
-import { dbRealtime, auth, db, storage } from '../firebase';
+import { auth, dbRealtime, storage } from '../firebase';
+import {
+  ref,
+  push,
+  onChildAdded,
+  serverTimestamp,
+  update
+} from 'firebase/database';
+import { uploadBytes, getDownloadURL, ref as storageRef } from 'firebase/storage';
 import Header from '../components/Header';
 import Toast from '../components/Toast';
-import { doc, getDoc } from 'firebase/firestore';
-import {
-  getDownloadURL,
-  ref as storageRef,
-  uploadBytes
-} from 'firebase/storage';
 
 export default function Chat() {
-  const [messages, setMessages] = useState([]);
-  const [text, setText] = useState('');
-  const [toastMsg, setToastMsg] = useState('');
-  const [showToast, setShowToast] = useState(false);
-  const [partnerProfile, setPartnerProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [typing, setTyping] = useState(false);
-  const [partnerTyping, setPartnerTyping] = useState(false);
-  const listRef = useRef(null);
-
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const partner = searchParams.get('partner');
-  const user = auth.currentUser;
 
-  const chatId = [user.email, partner].sort().join('_').replace(/\./g, '_');
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [toastMsg, setToastMsg] = useState('');
+  const [showToast, setShowToast] = useState(false);
+  const [typing, setTyping] = useState(false);
+  const [file, setFile] = useState(null);
+
+  const chatRef = useRef(null);
+  const currentUser = auth.currentUser?.email || '';
+  const chatId = [currentUser, partner].sort().join('_').replace(/\./g, '_');
 
   useEffect(() => {
-    const chatRef = ref(dbRealtime, `chats/${chatId}`);
-    onChildAdded(chatRef, (snapshot) => {
-      const message = snapshot.val();
-      setMessages((prev) => [...prev, message]);
-      setTimeout(() => {
-        listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-      }, 100);
+    const msgRef = ref(dbRealtime, `chats/${chatId}`);
+    const typingRef = ref(dbRealtime, `typing/${chatId}/${partner.replace(/\./g, '_')}`);
+
+    onChildAdded(msgRef, (snap) => {
+      setMessages((prev) => [...prev, snap.val()]);
+      setLoading(false);
     });
 
-    const typingRef = ref(dbRealtime, `typing/${chatId}/${partner}`);
-    onValue(typingRef, (snap) => {
-      setPartnerTyping(snap.val() === true);
+    onChildAdded(typingRef, (snap) => {
+      if (snap.key === 'typing') setTyping(true);
+      setTimeout(() => setTyping(false), 2000);
     });
   }, [chatId, partner]);
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (!partner) return;
-      const docRef = doc(db, 'users', partner);
-      const snap = await getDoc(docRef);
-      if (snap.exists()) {
-        setPartnerProfile(snap.data());
-      }
-      setLoading(false);
-    };
-    fetchProfile();
-  }, [partner]);
-
   const sendMessage = async () => {
-    if (!text.trim()) return;
-    const message = {
-      sender: user.email,
-      text,
-      timestamp: Date.now(),
-      read: false
-    };
-    const chatRef = ref(dbRealtime, `chats/${chatId}`);
-    await push(chatRef, message);
-    set(ref(dbRealtime, `typing/${chatId}/${user.email}`), false);
-    setText('');
-  };
-
-  const handleTyping = (e) => {
-    const val = e.target.value;
-    setText(val);
-    setTyping(true);
-    set(ref(dbRealtime, `typing/${chatId}/${user.email}`), true);
-
-    setTimeout(() => {
-      setTyping(false);
-      set(ref(dbRealtime, `typing/${chatId}/${user.email}`), false);
-    }, 2000);
-  };
-
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const fileRef = storageRef(storage, `chats/${chatId}/${Date.now()}_${file.name}`);
-    await uploadBytes(fileRef, file);
-    const url = await getDownloadURL(fileRef);
-
-    const message = {
-      sender: user.email,
-      text: '',
-      fileUrl: url,
-      fileName: file.name,
-      timestamp: Date.now(),
-      read: false
+    if (!input.trim() && !file) return;
+    const msgRef = ref(dbRealtime, `chats/${chatId}`);
+    let message = {
+      sender: currentUser,
+      text: input,
+      timestamp: Date.now()
     };
 
-    const chatRef = ref(dbRealtime, `chats/${chatId}`);
-    await push(chatRef, message);
-    setToastMsg('📎 File sent!');
-    setShowToast(true);
-  };
+    if (file) {
+      const filePath = `uploads/${chatId}/${Date.now()}-${file.name}`;
+      const fileRef = storageRef(storage, filePath);
+      const snapshot = await uploadBytes(fileRef, file);
+      const fileURL = await getDownloadURL(snapshot.ref);
+      message.image = fileURL;
+      setFile(null);
+    }
 
-  const formatTime = (ts) => {
-    if (!ts) return '';
-    const date = new Date(ts);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    push(msgRef, message);
+    setInput('');
   };
 
   return (
     <>
       <Header showLogout={true} />
-      <Container maxWidth="sm">
-        <Box mt={4} mb={2}>
-          {loading ? (
-            <CircularProgress />
-          ) : (
-            <Paper elevation={3} sx={{ p: 2 }}>
-              <Box display="flex" alignItems="center" gap={2}>
-                <Avatar src={`https://ui-avatars.com/api/?name=${partner}`} />
-                <Box>
-                  <Typography variant="h6">Chat with {partner}</Typography>
-                  {partnerProfile?.bio && (
-                    <Typography variant="body2" color="textSecondary">
-                      {partnerProfile.bio}
-                    </Typography>
-                  )}
-                </Box>
-              </Box>
-            </Paper>
-          )}
+      <Container maxWidth="md">
+        <Box mt={4} textAlign="center">
+          <Typography variant="h5" sx={{ fontFamily: 'Georgia, serif', color: 'primary.main' }}>
+            Chat with <strong>{partner}</strong>
+          </Typography>
         </Box>
 
-        <Paper elevation={2} sx={{ maxHeight: 400, overflowY: 'auto', p: 2 }}>
-          <List>
-            {messages.map((msg, i) => (
-              <ListItem
+        <Paper sx={{ mt: 3, p: 2, backgroundColor: '#FEFFEC', minHeight: '400px', maxHeight: '500px', overflowY: 'auto' }} ref={chatRef}>
+          {loading ? (
+            <Box display="flex" justifyContent="center">
+              <CircularProgress />
+            </Box>
+          ) : (
+            messages.map((msg, i) => (
+              <Box
                 key={i}
                 sx={{
-                  justifyContent:
-                    msg.sender === user.email ? 'flex-end' : 'flex-start'
+                  textAlign: msg.sender === currentUser ? 'right' : 'left',
+                  my: 1
                 }}
               >
-                <Tooltip title={msg.sender} placement="top">
-                  <ListItemText
-                    primary={
-                      msg.fileUrl ? (
-                        <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer">
-                          📎 {msg.fileName || 'File'}
-                        </a>
-                      ) : (
-                        msg.text
-                      )
-                    }
-                    secondary={
-                      <Box display="flex" alignItems="center" justifyContent="space-between">
-                        <Typography variant="caption">
-                          {formatTime(msg.timestamp)}
-                        </Typography>
-                        {msg.sender === user.email && (
-                          <Box display="flex" alignItems="center">
-                            <DoneAllIcon fontSize="small" sx={{ color: '#4caf50', ml: 1 }} />
-                            <Typography variant="caption" sx={{ ml: 0.5 }}>
-                              Sent
-                            </Typography>
-                          </Box>
-                        )}
-                      </Box>
-                    }
-                    sx={{
-                      backgroundColor:
-                        msg.sender === user.email ? '#CDE8C2' : '#FEFFEC',
-                      borderRadius: 2,
-                      px: 2,
-                      py: 1,
-                      maxWidth: '70%',
-                      wordBreak: 'break-word'
-                    }}
-                  />
-                </Tooltip>
-              </ListItem>
-            ))}
-            {partnerTyping && (
-              <ListItem>
-                <Typography variant="body2" color="textSecondary">
-                  {partner} is typing...
+                <Typography
+                  variant="body2"
+                  sx={{
+                    background: msg.sender === currentUser ? '#023020' : '#cfcfcf',
+                    color: msg.sender === currentUser ? '#FEFFEC' : '#000',
+                    display: 'inline-block',
+                    p: 1,
+                    borderRadius: 2,
+                    maxWidth: '80%'
+                  }}
+                >
+                  {msg.text}
+                  {msg.image && (
+                    <img src={msg.image} alt="uploaded" style={{ maxWidth: '100%', marginTop: '5px' }} />
+                  )}
+                  <br />
+                  <small style={{ opacity: 0.7 }}>{new Date(msg.timestamp).toLocaleTimeString()}</small>
                 </Typography>
-              </ListItem>
-            )}
-            <div ref={listRef} />
-          </List>
+              </Box>
+            ))
+          )}
+
+          {typing && (
+            <Typography variant="caption" color="text.secondary">
+              {partner} is typing...
+            </Typography>
+          )}
         </Paper>
 
-        <Box mt={2} display="flex" alignItems="center" gap={1}>
-          <label htmlFor="file-upload">
-            <Input
-              id="file-upload"
-              type="file"
-              sx={{ display: 'none' }}
-              onChange={handleFileUpload}
-            />
-            <IconButton component="span">
-              <AttachFileIcon />
-            </IconButton>
-          </label>
-
+        <Box display="flex" alignItems="center" mt={2} gap={1}>
           <TextField
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
             fullWidth
-            variant="outlined"
-            placeholder="Type a message"
-            value={text}
-            onChange={handleTyping}
-            onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+            placeholder="Type a message..."
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') sendMessage();
+            }}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton onClick={sendMessage}>
+                    <SendIcon />
+                  </IconButton>
+                </InputAdornment>
+              )
+            }}
           />
 
-          <IconButton color="primary" onClick={sendMessage}>
-            <SendIcon />
-          </IconButton>
+          <label htmlFor="file-input">
+            <input
+              id="file-input"
+              type="file"
+              hidden
+              accept="image/*"
+              onChange={(e) => setFile(e.target.files[0])}
+            />
+            <IconButton component="span">
+              <ImageIcon />
+            </IconButton>
+          </label>
         </Box>
       </Container>
 

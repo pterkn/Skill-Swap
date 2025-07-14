@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   Container,
@@ -79,10 +78,10 @@ export default function Review() {
         createdAt: new Date()
       });
       setSubmitted(true);
-      setToastMsg('Review submitted!');
+      setToastMsg('✅ Review submitted!');
       setShowToast(true);
     } catch (err) {
-      setToastMsg('Failed to submit review.');
+      setToastMsg('❌ Failed to submit review.');
       setShowToast(true);
     }
   };
@@ -103,109 +102,105 @@ export default function Review() {
   return (
     <>
       <Header showLogout={true} />
-      <Container maxWidth="sm" sx={{ mt: 4 }}>
-        <Card sx={{ backgroundColor: '#FEFFEC' }}>
-          <CardContent>
-            <Box textAlign="center">
-              <Typography variant="h4" fontFamily="Georgia, serif">
-                Leave a Review
-              </Typography>
-              <Typography variant="subtitle1" mt={1}>
-                for <strong>{targetEmail}</strong>
-              </Typography>
+      <Container maxWidth="sm">
+        <Box mt={4} textAlign="center">
+          <Typography variant="h4" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
+            Leave a Review
+          </Typography>
+          <Typography variant="subtitle1" mt={1}>
+            for <strong>{targetEmail}</strong>
+          </Typography>
+        </Box>
+
+        {hasReviewed ? (
+          <Card sx={{ mt: 4, backgroundColor: '#FEFFEC' }}>
+            <CardContent>
+              <Typography>You already submitted a review for this user </Typography>
+            </CardContent>
+          </Card>
+        ) : submitted ? (
+          <Card sx={{ mt: 4, backgroundColor: '#FEFFEC' }}>
+            <CardContent>
+              <Typography>Thank you for your feedback! 🙏</Typography>
+            </CardContent>
+          </Card>
+        ) : (
+          <Box component="form" mt={4} onSubmit={handleSubmit}>
+            <Box mb={2}>
+              <Rating
+                value={rating}
+                onChange={(e, newVal) => setRating(newVal)}
+                size="large"
+              />
             </Box>
 
-            {hasReviewed ? (
-              <Box mt={4}>
-                <Typography>You already submitted a review for this user.</Typography>
-              </Box>
-            ) : submitted ? (
-              <Box mt={4}>
-                <Typography>Thank you for your feedback! 🙏</Typography>
-              </Box>
-            ) : (
-              <Box component="form" mt={4} onSubmit={handleSubmit}>
-                <Rating
-                  value={rating}
-                  onChange={(e, newVal) => setRating(newVal)}
-                  size="large"
-                />
+            <TextField
+              label="Feedback"
+              multiline
+              fullWidth
+              rows={4}
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              required
+            />
 
-                <TextField
-                  label="Feedback"
-                  multiline
-                  fullWidth
-                  rows={4}
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  required
-                  sx={{ mt: 2 }}
-                />
+            <Button variant="contained" type="submit" fullWidth sx={{ mt: 2 }}>
+              Submit Review
+            </Button>
+          </Box>
+        )}
 
-                <Button
-                  variant="contained"
-                  type="submit"
-                  fullWidth
-                  sx={{ mt: 2, bgcolor: '#023020', color: '#FEFFEC' }}
-                >
-                  Submit Review
-                </Button>
+        {pastReviews.length > 0 && (
+          <>
+            <Box mt={6} textAlign="center">
+              <Typography variant="h6">Average Rating</Typography>
+              <Rating value={averageRating} precision={0.5} readOnly />
+              <Typography variant="caption">{averageRating.toFixed(1)} / 5</Typography>
+            </Box>
+
+            <Box mt={4}>
+              <Typography variant="h6" mb={2}>Ratings Breakdown</Typography>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={ratingCounts}>
+                  <XAxis dataKey="name" />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#023020" />
+                </BarChart>
+              </ResponsiveContainer>
+            </Box>
+
+            {mostHelpfulReview && (
+              <Box mt={4}>
+                <Typography variant="h6">Most Helpful Review</Typography>
+                <Card sx={{ mt: 2, backgroundColor: '#FEFFEC' }}>
+                  <CardContent>
+                    <Typography variant="subtitle2">{mostHelpfulReview.reviewer}</Typography>
+                    <Rating value={mostHelpfulReview.rating} readOnly size="small" />
+                    <Divider sx={{ my: 1 }} />
+                    <Typography variant="body2">{mostHelpfulReview.comment}</Typography>
+                  </CardContent>
+                </Card>
               </Box>
             )}
 
-            {pastReviews.length > 0 && (
-              <Box mt={6}>
-                <Typography variant="h6" textAlign="center">Average Rating</Typography>
-                <Box textAlign="center">
-                  <Rating value={averageRating} precision={0.5} readOnly />
-                  <Typography variant="caption">{averageRating.toFixed(1)} / 5</Typography>
-                </Box>
-
-                <Box mt={4}>
-                  <Typography variant="h6">Ratings Breakdown</Typography>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={ratingCounts}>
-                      <XAxis dataKey="name" />
-                      <YAxis allowDecimals={false} />
-                      <Tooltip />
-                      <Bar dataKey="count" fill="#1976d2" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </Box>
-
-                {mostHelpfulReview && (
-                  <Box mt={4}>
-                    <Typography variant="h6">Most Helpful Review</Typography>
-                    <Card sx={{ mt: 2 }}>
-                      <CardContent>
-                        <Typography variant="subtitle2">{mostHelpfulReview.reviewer}</Typography>
-                        <Rating value={mostHelpfulReview.rating} readOnly size="small" />
-                        <Divider sx={{ my: 1 }} />
-                        <Typography variant="body2">{mostHelpfulReview.comment}</Typography>
-                      </CardContent>
-                    </Card>
-                  </Box>
-                )}
-
-                <Box mt={4}>
-                  <Typography variant="h6">All Reviews</Typography>
-                  {pastReviews.map((r, i) => (
-                    <Card key={i} sx={{ mt: 2 }}>
-                      <CardContent>
-                        <Box display="flex" justifyContent="space-between">
-                          <Typography variant="subtitle2">{r.reviewer}</Typography>
-                          <Rating value={r.rating} readOnly size="small" />
-                        </Box>
-                        <Divider sx={{ my: 1 }} />
-                        <Typography variant="body2">{r.comment}</Typography>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </Box>
-              </Box>
-            )}
-          </CardContent>
-        </Card>
+            <Box mt={6}>
+              <Typography variant="h6">All Reviews</Typography>
+              {pastReviews.map((r, i) => (
+                <Card key={i} sx={{ mt: 2, backgroundColor: '#FEFFEC' }}>
+                  <CardContent>
+                    <Box display="flex" alignItems="center" justifyContent="space-between">
+                      <Typography variant="subtitle2">{r.reviewer}</Typography>
+                      <Rating value={r.rating} readOnly size="small" />
+                    </Box>
+                    <Divider sx={{ my: 1 }} />
+                    <Typography variant="body2">{r.comment}</Typography>
+                  </CardContent>
+                </Card>
+              ))}
+            </Box>
+          </>
+        )}
       </Container>
 
       <Toast

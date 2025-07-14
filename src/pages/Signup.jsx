@@ -1,12 +1,10 @@
-// src/pages/Signup.jsx
 import React, { useState } from 'react';
 import {
   Container,
+  Typography,
   TextField,
   Button,
-  Typography,
   Box,
-  Paper,
   LinearProgress
 } from '@mui/material';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -36,11 +34,10 @@ export default function Signup() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (password !== confirm) {
-      setToastMsg('Passwords do not match.');
+      setToastMsg('Passwords do not match');
       setShowToast(true);
       return;
     }
-
     try {
       await createUserWithEmailAndPassword(auth, email, password);
       navigate('/dashboard');
@@ -59,53 +56,70 @@ export default function Signup() {
   return (
     <>
       <Header />
-      <Container maxWidth="sm" sx={{ mt: 6 }}>
-        <Paper elevation={3} sx={{ p: 4, backgroundColor: '#FEFFEC' }}>
-          <Typography variant="h5" gutterBottom sx={{ fontFamily: 'Georgia, serif' }}>
-            Create Your Account
-          </Typography>
+      <Container maxWidth="sm">
+        <Box mt={6}>
+          <Box textAlign="center" mb={4}>
+            <img
+              src="/logo.png"
+              alt="SkillSwap Logo"
+              style={{ height: '60px', marginBottom: '1rem' }}
+            />
+            <Typography variant="h4" sx={{ fontFamily: 'Georgia, serif', color: 'primary.main', fontWeight: 'bold' }}>
+              Create Your Account
+            </Typography>
+          </Box>
 
-          <Box component="form" onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit}>
             <TextField
               label="Email"
-              value={email}
+              type="email"
               fullWidth
+              value={email}
               onChange={(e) => setEmail(e.target.value)}
-              sx={{ mb: 2 }}
+              margin="normal"
+              required
             />
             <TextField
               label="Password"
               type="password"
-              value={password}
               fullWidth
+              value={password}
               onChange={handlePasswordChange}
-              sx={{ mb: 1 }}
+              margin="normal"
+              required
             />
-
             <LinearProgress
               variant="determinate"
               value={(strength / 4) * 100}
-              sx={{ height: 8, borderRadius: 4, mb: 2 }}
-              color={strength < 2 ? 'error' : strength < 3 ? 'warning' : 'success'}
+              sx={{ height: 8, borderRadius: 5, mb: 2 }}
             />
-
             <TextField
               label="Confirm Password"
               type="password"
-              value={confirm}
               fullWidth
+              value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
-              sx={{ mb: 2 }}
+              margin="normal"
+              required
             />
-            <Button variant="contained" type="submit" fullWidth>
+
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              fullWidth
+              sx={{ mt: 2 }}
+            >
               Sign Up
             </Button>
-          </Box>
+          </form>
 
-          <Typography variant="body2" mt={2}>
-            Already have an account? <Link to="/">Login</Link>
-          </Typography>
-        </Paper>
+          <Box textAlign="center" mt={2}>
+            <Typography variant="body2">
+              Already have an account? <Link to="/">Login</Link>
+            </Typography>
+          </Box>
+        </Box>
       </Container>
 
       <Toast
