@@ -1,106 +1,195 @@
-
 import React, { useEffect, useState, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
-import { auth, dbRealtime } from '../firebase';
-import { ref, push, onChildAdded } from 'firebase/database';
+import {
+  Box,
+  Container,
+  TextField,
+  Button,
+  Typography,
+  Paper,
+  Avatar
+} from '@mui/material';
+import SendIcon from '@mui/icons-material/Send';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import {
+  ref,
+  push,
+  onChildAdded,
+  update,
+  onValue
+} from 'firebase/database';
+import { dbRealtime, auth } from '../firebase';
 import Header from '../components/Header';
 import Toast from '../components/Toast';
-import '../style.css';
 
 export default function Chat() {
   const [messages, setMessages] = useState([]);
-  const [newMsg, setNewMsg] = useState('');
-  const [partner, setPartner] = useState('');
+  const [input, setInput] = useState('');
   const [toastMsg, setToastMsg] = useState('');
   const [showToast, setShowToast] = useState(false);
-  const messagesEndRef = useRef(null);
-  const location = useLocation();
+  const [typingStatus, setTypingStatus] = useState({});
+  const [recentPartners, setRecentPartners] = useState([]);
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const bottomRef = useRef(null);
+  const typingTimeout = useRef(null);
+
+  const user = auth.currentUser;
+  const sender = user?.email?.replace(/\./g, '_');
+  const partner = searchParams.get('partner');
+  const receiver = partner?.replace(/\./g, '_');
+  const chatId = [sender, receiver].sort().join('_');
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const partnerEmail = params.get('partner');
-    if (!partnerEmail) return;
-    setPartner(partnerEmail);
-
-    const userEmail = auth.currentUser?.email;
-    if (!userEmail) return;
-
-    const chatId = generateChatId(userEmail, partnerEmail);
-    const chatRef = ref(dbRealtime, `chats/${chatId}`);
-
-    onChildAdded(chatRef, (snap) => {
-      setMessages((prev) => [...prev, snap.val()]);
+    const chatRef = ref(dbRealtime, `chats/${chatId}/messages`);
+    onChildAdded(chatRef, (snapshot) => {
+      const msg = snapshot.val();
+      setMessages((prev) => [...prev, msg]);
     });
-  }, [location.search]);
+
+    const typingRef = ref(dbRealtime, `chats/${chatId}/typing`);
+    onValue(typingRef, (snap) => {
+      setTypingStatus(snap.val() || {});
+    });
+
+    const indexRef = ref(dbRealtime, `chatIndex/${sender}`);
+    onValue(indexRef, (snap) => {
+      const data = snap.val() || {};
+      setRecentPartners(Object.keys(data));
+    });
+  }, [chatId, sender]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const generateChatId = (a, b) => {
-    return [a, b].sort().join('_').replace(/\./g, '_');
+  const handleSend = () => {
+    if (!input.trim()) return;
+
+    const chatRef = ref(dbRealtime, `chats/${chatId}/messages`);
+    push(chatRef, {
+      sender: user.email,
+      text: input,
+      time: new Date().toLocaleTimeString()
+    });
+
+    update(ref(dbRealtime, `chats/${chatId}/typing`), {
+      [sender]: false
+    });
+
+    update(ref(dbRealtime, `chatIndex/${sender}`), {
+      [receiver]: Date.now()
+    });
+
+    update(ref(dbRealtime, `chatIndex/${receiver}`), {
+      [sender]: Date.now()
+    });
+
+    setInput('');
+    setToastMsg('✅ Message sent!');
+    setShowToast(true);
   };
 
-  const handleSend = async (e) => {
-    e.preventDefault();
-    if (!newMsg.trim()) return;
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setInput(value);
 
-    const userEmail = auth.currentUser?.email;
-    const chatId = generateChatId(userEmail, partner);
-    const chatRef = ref(dbRealtime, `chats/${chatId}`);
+    update(ref(dbRealtime, `chats/${chatId}/typing`), {
+      [sender]: true
+    });
 
-    try {
-      await push(chatRef, {
-        sender: userEmail,
-        text: newMsg,
-        timestamp: Date.now()
+    if (typingTimeout.current) clearTimeout(typingTimeout.current);
+    typingTimeout.current = setTimeout(() => {
+      update(ref(dbRealtime, `chats/${chatId}/typing`), {
+        [sender]: false
       });
-      setNewMsg('');
-    } catch (err) {
-      setToastMsg(' Failed to send message');
-      setShowToast(true);
-    }
+    }, 2000);
   };
 
   return (
     <>
       <Header showLogout={true} />
-      <div className="container chat-container">
-        <h2>Chat with {partner}</h2>
-
-        <div className="chat-window">
-          {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={`chat-msg ${
-                msg.sender === auth.currentUser?.email ? 'own' : 'other'
-              }`}
+      <Box display="flex">
+        <Box width={250} p={2} borderRight="1px solid #ccc">
+          <Typography variant="h6">Recent Chats</Typography>
+          {recentPartners.map((p) => (
+            <Button
+              key={p}
+              fullWidth
+              variant="text"
+              onClick={() => navigate(`/chat?partner=${p.replace(/_/g, '.')}`)}
             >
-              <strong>
-                {msg.sender === auth.currentUser?.email ? 'You' : partner}:
-              </strong>{' '}
-              {msg.text}
-            </div>
+              {p.replace(/_/g, '.')}
+            </Button>
           ))}
-          <div ref={messagesEndRef}></div>
-        </div>
+        </Box>
 
-        <form className="chat-form" onSubmit={handleSend}>
-          <input
-            type="text"
-            placeholder="Type a message..."
-            value={newMsg}
-            onChange={(e) => setNewMsg(e.target.value)}
-          />
-          <button type="submit">Send</button>
-        </form>
-      </div>
+        <Container maxWidth="sm" sx={{ flexGrow: 1 }}>
+          <Box mt={2} mb={1}>
+            <Typography variant="h5" align="center">
+              Chat with {partner}
+            </Typography>
+          </Box>
+
+          <Paper elevation={3} sx={{ height: '60vh', overflowY: 'auto', p: 2 }}>
+            {messages.map((msg, idx) => (
+              <Box
+                key={idx}
+                display="flex"
+                justifyContent={msg.sender === user.email ? 'flex-end' : 'flex-start'}
+                mb={1}
+              >
+                {msg.sender !== user.email && (
+                  <Avatar
+                    src={`https://ui-avatars.com/api/?name=${msg.sender}`}
+                    sx={{ mr: 1, width: 32, height: 32 }}
+                  />
+                )}
+                <Box
+                  sx={{
+                    bgcolor: msg.sender === user.email ? '#1976d2' : '#e0e0e0',
+                    color: msg.sender === user.email ? '#fff' : '#000',
+                    px: 2,
+                    py: 1,
+                    borderRadius: 2,
+                    maxWidth: '75%'
+                  }}
+                >
+                  <Typography variant="body2">{msg.text}</Typography>
+                  <Typography variant="caption" sx={{ display: 'block', textAlign: 'right' }}>
+                    {msg.time}
+                  </Typography>
+                </Box>
+              </Box>
+            ))}
+            <div ref={bottomRef}></div>
+          </Paper>
+
+          {typingStatus[receiver] && (
+            <Typography fontStyle="italic" fontSize={13} mt={1} color="gray">
+              {partner} is typing...
+            </Typography>
+          )}
+
+          <Box display="flex" mt={2} gap={1}>
+            <TextField
+              value={input}
+              onChange={handleInputChange}
+              fullWidth
+              placeholder="Type your message..."
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            />
+            <Button variant="contained" onClick={handleSend} endIcon={<SendIcon />}>
+              Send
+            </Button>
+          </Box>
+        </Container>
+      </Box>
 
       <Toast
         message={toastMsg}
         visible={showToast}
         onHide={() => setShowToast(false)}
-        type="error"
+        type="success"
       />
     </>
   );
