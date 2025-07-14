@@ -1,3 +1,4 @@
+// src/pages/Chat.jsx
 import React, { useEffect, useState, useRef } from 'react';
 import {
   Container,
@@ -14,7 +15,6 @@ import {
   Avatar,
   Tooltip,
   Input,
-  Button
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
@@ -25,7 +25,11 @@ import { dbRealtime, auth, db, storage } from '../firebase';
 import Header from '../components/Header';
 import Toast from '../components/Toast';
 import { doc, getDoc } from 'firebase/firestore';
-import { getDownloadURL, ref as storageRef, uploadBytes } from 'firebase/storage';
+import {
+  getDownloadURL,
+  ref as storageRef,
+  uploadBytes
+} from 'firebase/storage';
 
 export default function Chat() {
   const [messages, setMessages] = useState([]);
@@ -43,10 +47,7 @@ export default function Chat() {
   const partner = searchParams.get('partner');
   const user = auth.currentUser;
 
-  const chatId = [user.email, partner]
-    .sort()
-    .join('_')
-    .replace(/\./g, '_');
+  const chatId = [user.email, partner].sort().join('_').replace(/\./g, '_');
 
   useEffect(() => {
     const chatRef = ref(dbRealtime, `chats/${chatId}`);
