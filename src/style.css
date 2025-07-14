@@ -11,8 +11,8 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   z-index: 2000;
 }
-.toast.info { background-color: #1976d2; }
-.toast.success { background-color: #388e3c; }
+.toast.info { background-color: #023020; }
+.toast.success { background-color: #097969; }
 .toast.error { background-color: #d32f2f; }
 
 .stars .star {
@@ -27,8 +27,8 @@
 /* General Layout */
 body {
   margin: 0;
-  font-family: 'Inter', sans-serif;
-  background-color: #f9f9f9;
+  font-family: 'Inter', serif;
+  background-color: #FEFFEC;
   color: #333;
 }
 
@@ -43,8 +43,8 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #0d47a1;
-  color: white;
+  background: #023020;
+  color: #FEFFEC;
   padding: 1rem 2rem;
   position: sticky;
   top: 0;
@@ -52,7 +52,7 @@ body {
 }
 
 .site-title a {
-  color: white;
+  color:#FEFFEC;
   text-decoration: none;
   font-family: 'Playfair Display', serif;
   font-size: 1.8rem;
@@ -85,7 +85,7 @@ button {
 }
 
 button {
-  background: #1976d2;
+  background: #023020;
   color: white;
   border: none;
   cursor: pointer;
@@ -93,7 +93,7 @@ button {
 }
 
 button:hover {
-  background: #0d47a1;
+  background: #023020;
 }
 
 /* Lists */
@@ -169,7 +169,7 @@ li {
 }
 
 .chat-window {
-  background: #f1f1f1;
+  background: #FEFFEC;
   border-radius: 8px;
   padding: 1rem;
   height: 300px;
