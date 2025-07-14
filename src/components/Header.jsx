@@ -83,7 +83,7 @@ export default function Header({ showLogout = false }) {
 
   return (
     <>
-      <AppBar position="static" color="default" elevation={1}>
+      <AppBar position="static" elevation={1} sx={{ backgroundColor: '#023020', color: '#FEFFEC' }}>
         <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
           <Box display="flex" alignItems="center">
             <Avatar
@@ -95,7 +95,7 @@ export default function Header({ showLogout = false }) {
               variant="h6"
               component={Link}
               to="/dashboard"
-              sx={{ textDecoration: 'none', color: 'inherit' }}
+              sx={{ textDecoration: 'none', color: '#FEFFEC' }}
             >
               SkillSwap
             </Typography>
