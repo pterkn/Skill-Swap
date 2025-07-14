@@ -1,122 +1,166 @@
-
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import {
+  Container,
+  Box,
+  TextField,
+  Button,
+  Typography,
+  Grid,
+  Card,
+  CardContent,
+  CardActions,
+  Divider
+} from '@mui/material';
 import { auth, db } from '../firebase';
 import {
   collection,
   addDoc,
   onSnapshot,
-  serverTimestamp
+  query,
+  orderBy
 } from 'firebase/firestore';
-import { onAuthStateChanged } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import Toast from '../components/Toast';
-import '../style.css';
 
 export default function Dashboard() {
   const [skills, setSkills] = useState([]);
   const [offered, setOffered] = useState('');
   const [requested, setRequested] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [search, setSearch] = useState('');
   const [toastMsg, setToastMsg] = useState('');
   const [showToast, setShowToast] = useState(false);
-  const [loading, setLoading] = useState(true);
+
   const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (!user) navigate('/');
-      else {
-        const ref = collection(db, 'skills');
-        onSnapshot(ref, (snapshot) => {
-          const all = snapshot.docs.map(doc => doc.data());
-          all.sort((a, b) => a.offered.localeCompare(b.offered));
-          setSkills(all);
-          setLoading(false);
-        });
-      }
+    const user = auth.currentUser;
+    if (!user) {
+      navigate('/');
+      return;
+    }
+
+    const q = query(collection(db, 'skills'), orderBy('offered'));
+    const unsub = onSnapshot(q, (snap) => {
+      const list = snap.docs.map((doc) => doc.data());
+      setSkills(list);
     });
-    return () => unsubscribe();
+
+    return () => unsub();
   }, [navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const user = auth.currentUser;
-    if (!user) return;
 
     try {
       await addDoc(collection(db, 'skills'), {
         email: user.email,
         offered,
         requested,
-        createdAt: serverTimestamp()
+        createdAt: new Date()
       });
-      setToastMsg('✅ Skill added successfully');
-      setShowToast(true);
       setOffered('');
       setRequested('');
+      setToastMsg('Skill added!');
+      setShowToast(true);
     } catch (err) {
-      setToastMsg('❌ Failed to add skill');
+      setToastMsg(' Failed to add skill.');
       setShowToast(true);
     }
   };
 
-  const filtered = skills.filter(skill =>
-    skill.offered?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    skill.requested?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredSkills = skills.filter((skill) =>
+    [skill.offered, skill.requested]
+      .join(' ')
+      .toLowerCase()
+      .includes(search.toLowerCase())
   );
 
   return (
     <>
       <Header showLogout={true} />
-      <div className="container">
-        <h2>Welcome to SkillSwap</h2>
+      <Container maxWidth="md">
+        <Box mt={4} mb={2} textAlign="center">
+          <Typography variant="h4">Welcome to SkillSwap</Typography>
+        </Box>
 
-        <form onSubmit={handleSubmit}>
-          <input
-            type="text"
-            placeholder="Skill You Offer"
+        {/* Add Skill Form */}
+        <Box component="form" onSubmit={handleSubmit} mb={4} display="flex" gap={2}>
+          <TextField
+            label="Skill You Offer"
             value={offered}
             onChange={(e) => setOffered(e.target.value)}
             required
+            fullWidth
           />
-          <input
-            type="text"
-            placeholder="Skill You Want"
+          <TextField
+            label="Skill You Want"
             value={requested}
             onChange={(e) => setRequested(e.target.value)}
             required
+            fullWidth
           />
-          <button type="submit">Add Skill</button>
-        </form>
+          <Button variant="contained" type="submit">
+            Add
+          </Button>
+        </Box>
 
-        <input
-          type="text"
-          placeholder="Search skills..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+        {/* Search Bar */}
+        <TextField
+          label="Search Skills"
+          fullWidth
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          sx={{ mb: 3 }}
         />
 
-        {loading ? (
-          <div className="spinner">Loading...</div>
-        ) : filtered.length === 0 ? (
-          <p>No skills found.</p>
-        ) : (
-          <ul>
-            {filtered.map((s, i) => (
-              <li key={i}>
-                {s.email}: Offers <strong>{s.offered}</strong> | Wants <strong>{s.requested}</strong>
-                {s.email !== auth.currentUser?.email && (
-                  <>
-                    <button onClick={() => navigate(`/chat?partner=${s.email}`)}>Chat</button>
-                    <button onClick={() => navigate(`/review?user=${s.email}`)}>Rate</button>
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+        {/* Skill Listings */}
+        <Grid container spacing={3}>
+          {filteredSkills.length === 0 ? (
+            <Grid item xs={12}>
+              <Typography>No matching skills found.</Typography>
+            </Grid>
+          ) : (
+            filteredSkills.map((skill, i) => (
+              <Grid item xs={12} sm={6} md={4} key={i}>
+                <Card elevation={3}>
+                  <CardContent>
+                    <Typography variant="subtitle1" gutterBottom>
+                      <strong>{skill.email}</strong>
+                    </Typography>
+                    <Typography>
+                      <strong>Offers:</strong> {skill.offered}
+                    </Typography>
+                    <Typography>
+                      <strong>Wants:</strong> {skill.requested}
+                    </Typography>
+                  </CardContent>
+                  <Divider />
+                  <CardActions>
+                    {skill.email !== auth.currentUser.email && (
+                      <>
+                        <Button
+                          size="small"
+                          onClick={() => navigate(`/chat?partner=${skill.email}`)}
+                        >
+                          Chat
+                        </Button>
+                        <Button
+                          size="small"
+                          onClick={() => navigate(`/review?user=${skill.email}`)}
+                        >
+                          Rate
+                        </Button>
+                      </>
+                    )}
+                  </CardActions>
+                </Card>
+              </Grid>
+            ))
+          )}
+        </Grid>
+      </Container>
 
       <Toast
         message={toastMsg}
