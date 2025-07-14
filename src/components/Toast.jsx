@@ -1,22 +1,27 @@
 
 import React, { useEffect } from 'react';
-import '../style.css';
+import { Snackbar, Alert } from '@mui/material';
 
-export default function Toast({ message, visible, type = 'info', onHide }) {
+export default function Toast({ message, visible, onHide, type = 'info', duration = 3000 }) {
   useEffect(() => {
     if (visible) {
       const timer = setTimeout(() => {
         onHide();
-      }, 3000);
+      }, duration);
       return () => clearTimeout(timer);
     }
-  }, [visible, onHide]);
-
-  if (!visible) return null;
+  }, [visible, duration, onHide]);
 
   return (
-    <div className={`toast ${type}`} role="alert">
-      {message}
-    </div>
+    <Snackbar
+      open={visible}
+      anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      onClose={onHide}
+      autoHideDuration={duration}
+    >
+      <Alert severity={type} onClose={onHide} variant="filled" sx={{ fontFamily: 'Georgia, serif' }}>
+        {message}
+      </Alert>
+    </Snackbar>
   );
 }
