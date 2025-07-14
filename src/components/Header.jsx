@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { auth, dbRealtime } from '../firebase';
 import {
@@ -6,7 +6,6 @@ import {
   Toolbar,
   Typography,
   Box,
-  Button,
   Avatar,
   IconButton,
   Menu,
@@ -18,15 +17,17 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Toast from './Toast';
 import { ref, onChildAdded, remove } from 'firebase/database';
+import { ColorModeContext } from '../ThemeContext';
 
 export default function Header({ showLogout = false }) {
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState(null);
   const [notifAnchor, setNotifAnchor] = useState(null);
-  const [darkMode, setDarkMode] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
+
+  const toggleColorMode = useContext(ColorModeContext);
 
   const handleLogout = async () => {
     await auth.signOut();
@@ -41,18 +42,13 @@ export default function Header({ showLogout = false }) {
     setAnchorEl(null);
   };
 
-  const toggleDarkMode = () => {
-    setDarkMode((prev) => !prev);
-    document.body.classList.toggle('dark-mode');
-  };
-
   const handleNotifClick = (event) => {
     setNotifAnchor(event.currentTarget);
   };
 
   const handleNotifClose = () => {
     setNotifAnchor(null);
-    setNotifications([]); // Clear UI
+    setNotifications([]);
   };
 
   useEffect(() => {
@@ -111,7 +107,7 @@ export default function Header({ showLogout = false }) {
 
           <Box display="flex" alignItems="center" gap={2}>
             <Tooltip title="Toggle dark mode">
-              <IconButton onClick={toggleDarkMode} color="inherit">
+              <IconButton onClick={toggleColorMode} color="inherit">
                 <Brightness4Icon />
               </IconButton>
             </Tooltip>
