@@ -1,181 +1,143 @@
-import React, { useEffect, useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Typography,
+  Box,
+  TextField,
+  Button,
   Grid,
   Card,
   CardContent,
-  Avatar,
-  Box,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  TextField,
-  Button,
   CardActions,
-  Checkbox,
-  FormControlLabel
+  Divider,
+  MenuItem,
+  Select,
+  InputLabel,
+  FormControl
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase';
 import {
   collection,
-  query,
-  onSnapshot,
   getDocs,
-  addDoc
+  orderBy,
+  query
 } from 'firebase/firestore';
+import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
-import CodeIcon from '@mui/icons-material/Code';
-import DesignServicesIcon from '@mui/icons-material/DesignServices';
-import SchoolIcon from '@mui/icons-material/School';
-import BuildIcon from '@mui/icons-material/Build';
 
 export default function Matching() {
   const [skills, setSkills] = useState([]);
-  const [profiles, setProfiles] = useState({});
-  const [category, setCategory] = useState('all');
+  const [matches, setMatches] = useState([]);
   const [search, setSearch] = useState('');
-  const [mutualOnly, setMutualOnly] = useState(false);
+  const [category, setCategory] = useState('all');
+  const [onlyMutual, setOnlyMutual] = useState(false);
+
   const navigate = useNavigate();
-  const currentUser = auth.currentUser?.email;
+  const userEmail = auth.currentUser?.email;
 
   useEffect(() => {
-    const q = query(collection(db, 'skills'));
-    const unsub = onSnapshot(q, (snap) => {
+    const fetchSkills = async () => {
+      const q = query(collection(db, 'skills'), orderBy('offered'));
+      const snap = await getDocs(q);
       const list = snap.docs.map((doc) => doc.data());
       setSkills(list);
-    });
-
-    const fetchProfiles = async () => {
-      const snap = await getDocs(collection(db, 'profiles'));
-      const map = {};
-      snap.forEach((doc) => {
-        map[doc.id] = doc.data();
-      });
-      setProfiles(map);
     };
-
-    fetchProfiles();
-    return () => unsub();
+    fetchSkills();
   }, []);
 
-  const currentUserSkills = skills.filter(s => s.email === currentUser);
+  useEffect(() => {
+    const mine = skills.filter((s) => s.email === userEmail);
+    const theirs = skills.filter((s) => s.email !== userEmail);
 
-  const matched = skills.filter(s => {
-    if (s.email === currentUser) return false;
-
-    const offeredToMe = currentUserSkills.some(m =>
-      m.requested.toLowerCase() === s.offered.toLowerCase()
+    const newMatches = theirs.filter((t) =>
+      mine.some((m) =>
+        m.offered.toLowerCase() === t.requested.toLowerCase() &&
+        m.requested.toLowerCase() === t.offered.toLowerCase()
+      )
     );
 
-    const wantsWhatIOffer = currentUserSkills.some(m =>
-      m.offered.toLowerCase() === s.requested.toLowerCase()
-    );
+    const filtered = newMatches.filter((s) => {
+      const queryMatch = [s.offered, s.requested].join(' ').toLowerCase().includes(search.toLowerCase());
+      const categoryMatch =
+        category === 'all' ||
+        (category === s.category);
+      return queryMatch && categoryMatch;
+    });
 
-    const mutual = offeredToMe && wantsWhatIOffer;
-    if (mutualOnly && !mutual) return false;
+    setMatches(onlyMutual ? filtered : theirs);
+  }, [skills, search, category, onlyMutual, userEmail]);
 
-    const categoryMatch = category === 'all' || s.category === category;
-
-    const textMatch = [s.offered, s.requested].join(' ').toLowerCase().includes(search.toLowerCase());
-
-    return (offeredToMe || wantsWhatIOffer) && categoryMatch && textMatch;
-  });
-
-  const getSkillIcon = (cat) => {
-    if (cat === 'code') return <CodeIcon fontSize="small" sx={{ mr: 1 }} />;
-    if (cat === 'design') return <DesignServicesIcon fontSize="small" sx={{ mr: 1 }} />;
-    if (cat === 'teaching') return <SchoolIcon fontSize="small" sx={{ mr: 1 }} />;
-    return <BuildIcon fontSize="small" sx={{ mr: 1 }} />;
-  };
-
-  const handleSaveMatch = async (matchEmail) => {
-    try {
-      await addDoc(collection(db, 'savedMatches'), {
-        user: currentUser,
-        match: matchEmail,
-        savedAt: new Date()
-      });
-      alert('Match saved!');
-    } catch (err) {
-      alert('Failed to save match.');
-    }
-  };
+  const categories = ['all', 'code', 'design', 'teaching', 'other'];
 
   return (
     <>
       <Header showLogout={true} />
-      <Container maxWidth="md">
-        <Box mt={4} textAlign="center">
-          <Typography variant="h4">Skill Matches</Typography>
-        </Box>
+      <Container maxWidth="md" sx={{ mt: 4 }}>
+        <Typography variant="h4" textAlign="center" mb={3} fontFamily="Georgia, serif">
+          Skill Matches
+        </Typography>
 
-        <Box display="flex" justifyContent="center" gap={2} mt={4} mb={3} flexWrap="wrap">
-          <FormControl>
-            <InputLabel>Category</InputLabel>
-            <Select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              label="Category"
-              sx={{ minWidth: 140 }}
-            >
-              <MenuItem value="all">All</MenuItem>
-              <MenuItem value="code">Code</MenuItem>
-              <MenuItem value="design">Design</MenuItem>
-              <MenuItem value="teaching">Teaching</MenuItem>
-              <MenuItem value="other">Other</MenuItem>
-            </Select>
-          </FormControl>
-
+        <Box display="flex" flexWrap="wrap" gap={2} mb={3}>
           <TextField
-            placeholder="Search skills"
+            label="Search skills"
+            fullWidth
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-
-          <FormControlLabel
-            control={<Checkbox checked={mutualOnly} onChange={(e) => setMutualOnly(e.target.checked)} />}
-            label="Show only mutual matches"
-          />
+          <FormControl fullWidth>
+            <InputLabel>Category</InputLabel>
+            <Select
+              value={category}
+              label="Category"
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              {categories.map((cat) => (
+                <MenuItem key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Button
+            variant={onlyMutual ? 'contained' : 'outlined'}
+            onClick={() => setOnlyMutual(!onlyMutual)}
+            sx={{ minWidth: '150px' }}
+          >
+            {onlyMutual ? 'Showing Mutual Matches' : 'Show Only Mutual'}
+          </Button>
         </Box>
 
         <Grid container spacing={3}>
-          {matched.length === 0 ? (
+          {matches.length === 0 ? (
             <Grid item xs={12}>
-              <Typography>No matches found</Typography>
+              <Typography>No matches found.</Typography>
             </Grid>
           ) : (
-            matched.map((s, i) => (
-              <Grid item xs={12} sm={6} md={4} key={i}>
-                <Card>
+            matches.map((skill, i) => (
+              <Grid item xs={12} sm={6} key={i}>
+                <Card sx={{ backgroundColor: '#FEFFEC' }}>
                   <CardContent>
-                    <Box display="flex" alignItems="center" mb={1}>
-                      <Avatar
-                        src={`https://ui-avatars.com/api/?name=${s.email}`}
-                        sx={{ width: 40, height: 40, mr: 1 }}
-                      />
-                      <Box>
-                        <Typography variant="subtitle1">
-                          <strong>{profiles[s.email]?.name || s.email}</strong>
-                        </Typography>
-                        {profiles[s.email]?.bio && (
-                          <Typography variant="caption">{profiles[s.email].bio}</Typography>
-                        )}
-                      </Box>
-                    </Box>
-                    <Typography>
-                      <strong>Offers:</strong> {getSkillIcon(s.category)} {s.offered}
+                    <Typography variant="subtitle1">
+                      <strong>{skill.email}</strong>
                     </Typography>
                     <Typography>
-                      <strong>Wants:</strong> {getSkillIcon(s.category)} {s.requested}
+                      <strong>Offers:</strong> {skill.offered}
                     </Typography>
+                    <Typography>
+                      <strong>Wants:</strong> {skill.requested}
+                    </Typography>
+                    <Typography variant="caption">Category: {skill.category}</Typography>
                   </CardContent>
+                  <Divider />
                   <CardActions>
-                    <Button size="small" onClick={() => navigate(`/chat?partner=${s.email}`)}>Chat</Button>
-                    <Button size="small" onClick={() => navigate(`/review?user=${s.email}`)}>Rate</Button>
-                    <Button size="small" onClick={() => handleSaveMatch(s.email)}>Save</Button>
+                    <Button size="small" onClick={() => navigate(`/chat?partner=${skill.email}`)}>
+                      💬 Chat
+                    </Button>
+                    <Button size="small" onClick={() => navigate(`/review?user=${skill.email}`)}>
+                      ⭐ Rate
+                    </Button>
+                    <Button size="small" variant="outlined" color="success">
+                      💾 Save Match
+                    </Button>
                   </CardActions>
                 </Card>
               </Grid>

@@ -1,19 +1,19 @@
+// src/pages/Signup.jsx
+import React, { useState } from 'react';
 import {
+  Container,
   TextField,
   Button,
-  Container,
   Typography,
   Box,
-  Alert
+  Paper,
+  LinearProgress
 } from '@mui/material';
-
-import React, { useState } from 'react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useNavigate, Link } from 'react-router-dom';
 import { auth } from '../firebase';
 import Header from '../components/Header';
 import Toast from '../components/Toast';
-import '../style.css';
 
 export default function Signup() {
   const [email, setEmail] = useState('');
@@ -36,15 +36,16 @@ export default function Signup() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (password !== confirm) {
-      setToastMsg(' Passwords do not match');
+      setToastMsg('Passwords do not match.');
       setShowToast(true);
       return;
     }
+
     try {
       await createUserWithEmailAndPassword(auth, email, password);
       navigate('/dashboard');
     } catch (err) {
-      setToastMsg(' Signup failed. Try again.');
+      setToastMsg('Signup failed. Try again.');
       setShowToast(true);
     }
   };
@@ -56,90 +57,63 @@ export default function Signup() {
   };
 
   return (
-  <>
-    <Header />
-    <Container maxWidth="xs">
-      <Box mt={4} display="flex" flexDirection="column" alignItems="center">
-        <img
-          src="/logo.png"
-          alt="SkillSwap Logo"
-          style={{ height: '60px', marginBottom: '1rem' }}
-        />
-        <Typography variant="h5" gutterBottom>
-          Create Your Account
-        </Typography>
+    <>
+      <Header />
+      <Container maxWidth="sm" sx={{ mt: 6 }}>
+        <Paper elevation={3} sx={{ p: 4, backgroundColor: '#FEFFEC' }}>
+          <Typography variant="h5" gutterBottom sx={{ fontFamily: 'Georgia, serif' }}>
+            Create Your Account
+          </Typography>
 
-        <form onSubmit={handleSubmit} style={{ width: '100%' }}>
-          <TextField
-            label="Email"
-            type="email"
-            fullWidth
-            margin="normal"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-
-          <TextField
-            label="Password"
-            type="password"
-            fullWidth
-            margin="normal"
-            value={password}
-            onChange={handlePasswordChange}
-            required
-          />
-
-          {/* Password Strength Bar */}
-          <Box
-            height="8px"
-            width="100%"
-            bgcolor="#ccc"
-            borderRadius="4px"
-            my={1}
-          >
-            <Box
-              height="100%"
-              width={`${(strength / 4) * 100}%`}
-              bgcolor={strength < 2 ? 'red' : strength < 4 ? 'orange' : 'green'}
-              borderRadius="4px"
-              transition="width 0.3s ease-in-out"
+          <Box component="form" onSubmit={handleSubmit}>
+            <TextField
+              label="Email"
+              value={email}
+              fullWidth
+              onChange={(e) => setEmail(e.target.value)}
+              sx={{ mb: 2 }}
             />
+            <TextField
+              label="Password"
+              type="password"
+              value={password}
+              fullWidth
+              onChange={handlePasswordChange}
+              sx={{ mb: 1 }}
+            />
+
+            <LinearProgress
+              variant="determinate"
+              value={(strength / 4) * 100}
+              sx={{ height: 8, borderRadius: 4, mb: 2 }}
+              color={strength < 2 ? 'error' : strength < 3 ? 'warning' : 'success'}
+            />
+
+            <TextField
+              label="Confirm Password"
+              type="password"
+              value={confirm}
+              fullWidth
+              onChange={(e) => setConfirm(e.target.value)}
+              sx={{ mb: 2 }}
+            />
+            <Button variant="contained" type="submit" fullWidth>
+              Sign Up
+            </Button>
           </Box>
 
-          <TextField
-            label="Confirm Password"
-            type="password"
-            fullWidth
-            margin="normal"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            required
-          />
+          <Typography variant="body2" mt={2}>
+            Already have an account? <Link to="/">Login</Link>
+          </Typography>
+        </Paper>
+      </Container>
 
-          <Button
-            variant="contained"
-            color="primary"
-            fullWidth
-            type="submit"
-            sx={{ mt: 2 }}
-          >
-            Sign Up
-          </Button>
-        </form>
-
-        <Typography variant="body2" mt={2}>
-          Already have an account? <Link to="/">Login</Link>
-        </Typography>
-      </Box>
-    </Container>
-
-    <Toast
-      message={toastMsg}
-      visible={showToast}
-      type="error"
-      onHide={() => setShowToast(false)}
-    />
-  </>
-);
+      <Toast
+        message={toastMsg}
+        visible={showToast}
+        onHide={() => setShowToast(false)}
+        type="error"
+      />
+    </>
+  );
 }

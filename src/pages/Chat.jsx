@@ -1,128 +1,153 @@
+// src/pages/Chat.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Container,
-  Box,
   Typography,
+  Box,
   TextField,
   Button,
-  Avatar,
   Paper,
-  Divider
+  Avatar
 } from '@mui/material';
 import { useLocation } from 'react-router-dom';
+import { ref, push, onChildAdded } from 'firebase/database';
 import { dbRealtime, auth, db } from '../firebase';
-import {
-  ref,
-  push,
-  onChildAdded,
-  serverTimestamp
-} from 'firebase/database';
-import { doc, getDoc } from 'firebase/firestore';
 import Header from '../components/Header';
+import Toast from '../components/Toast';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default function Chat() {
+  const [messages, setMessages] = useState([]);
+  const [text, setText] = useState('');
+  const [toastMsg, setToastMsg] = useState('');
+  const [showToast, setShowToast] = useState(false);
+  const [partnerName, setPartnerName] = useState('');
+  const bottomRef = useRef(null);
+
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const partner = searchParams.get('partner');
-  const user = auth.currentUser;
-  const [messages, setMessages] = useState([]);
-  const [text, setText] = useState('');
-  const bottomRef = useRef();
-  const [partnerProfile, setPartnerProfile] = useState(null);
+  const currentUser = auth.currentUser?.email;
+
+  const chatId = [currentUser, partner].sort().join('_').replace(/\./g, '_');
 
   useEffect(() => {
-    const chatId = [user.email, partner].sort().join('_').replace(/\./g, '_');
-    const messagesRef = ref(dbRealtime, 'chats/' + chatId);
+    const messagesRef = ref(dbRealtime, `chats/${chatId}`);
 
-    onChildAdded(messagesRef, (snap) => {
-      setMessages((prev) => [...prev, snap.val()]);
+    onChildAdded(messagesRef, (snapshot) => {
+      const data = snapshot.val();
+      setMessages((prev) => [...prev, data]);
     });
-  }, [user, partner]);
+
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   useEffect(() => {
-    const fetchPartnerProfile = async () => {
-      const snap = await getDoc(doc(db, 'profiles', partner));
+    const fetchPartner = async () => {
+      if (!partner) return;
+      const docRef = doc(db, 'profiles', partner);
+      const snap = await getDoc(docRef);
       if (snap.exists()) {
-        setPartnerProfile(snap.data());
+        setPartnerName(snap.data().name || partner);
+      } else {
+        setPartnerName(partner);
       }
     };
-    fetchPartnerProfile();
+    fetchPartner();
   }, [partner]);
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!text.trim()) return;
-    const chatId = [user.email, partner].sort().join('_').replace(/\./g, '_');
-    const messagesRef = ref(dbRealtime, 'chats/' + chatId);
 
-    push(messagesRef, {
-      sender: user.email,
-      text,
-      timestamp: serverTimestamp()
+    const msgRef = ref(dbRealtime, `chats/${chatId}`);
+    await push(msgRef, {
+      sender: currentUser,
+      receiver: partner,
+      message: text,
+      timestamp: Date.now()
     });
+
     setText('');
   };
 
   return (
     <>
       <Header showLogout={true} />
-      <Container maxWidth="sm">
-        <Box mt={4}>
-          <Paper sx={{ p: 2, mb: 2 }}>
-            <Box display="flex" alignItems="center">
-              <Avatar
-                src={`https://ui-avatars.com/api/?name=${partner}`}
-                sx={{ width: 50, height: 50, mr: 2 }}
-              />
-              <Box>
-                <Typography variant="h6">
-                  {partnerProfile?.name || partner}
-                </Typography>
-                {partnerProfile?.bio && (
-                  <Typography variant="caption">{partnerProfile.bio}</Typography>
-                )}
-              </Box>
-            </Box>
-          </Paper>
+      <Container maxWidth="sm" sx={{ mt: 4 }}>
+        <Paper elevation={3} sx={{ p: 2, backgroundColor: '#FEFFEC' }}>
+          <Box display="flex" alignItems="center" mb={2}>
+            <Avatar sx={{ bgcolor: '#023020', mr: 1 }}>
+              {partnerName?.[0]?.toUpperCase() || '?'}
+            </Avatar>
+            <Typography variant="h6" fontFamily="Georgia, serif">
+              Chat with {partnerName}
+            </Typography>
+          </Box>
 
-          <Paper sx={{ p: 2, height: '60vh', overflowY: 'auto', mb: 2 }}>
+          <Box
+            sx={{
+              height: '400px',
+              overflowY: 'auto',
+              border: '1px solid #ccc',
+              borderRadius: 2,
+              p: 2,
+              mb: 2,
+              backgroundColor: '#fff'
+            }}
+          >
             {messages.map((msg, i) => (
               <Box
                 key={i}
-                display="flex"
-                justifyContent={msg.sender === user.email ? 'flex-end' : 'flex-start'}
+                textAlign={msg.sender === currentUser ? 'right' : 'left'}
                 mb={1}
               >
-                <Box
-                  bgcolor={msg.sender === user.email ? 'primary.main' : 'grey.300'}
-                  color={msg.sender === user.email ? 'white' : 'black'}
-                  p={1.5}
-                  borderRadius={2}
-                  maxWidth="75%"
+                <Typography
+                  variant="body2"
+                  sx={{
+                    display: 'inline-block',
+                    px: 2,
+                    py: 1,
+                    borderRadius: 2,
+                    backgroundColor:
+                      msg.sender === currentUser ? '#023020' : '#e0e0e0',
+                    color: msg.sender === currentUser ? '#FEFFEC' : '#000'
+                  }}
                 >
-                  <Typography>{msg.text}</Typography>
-                </Box>
+                  {msg.message}
+                </Typography>
               </Box>
             ))}
-            <div ref={bottomRef}></div>
-          </Paper>
+            <div ref={bottomRef} />
+          </Box>
 
           <Box display="flex" gap={1}>
             <TextField
+              fullWidth
               value={text}
               onChange={(e) => setText(e.target.value)}
-              fullWidth
               placeholder="Type your message..."
             />
-            <Button variant="contained" onClick={sendMessage}>
+            <Button
+              onClick={sendMessage}
+              variant="contained"
+              sx={{ bgcolor: '#023020', color: '#FEFFEC' }}
+            >
               Send
             </Button>
           </Box>
-        </Box>
+        </Paper>
       </Container>
+
+      <Toast
+        message={toastMsg}
+        visible={showToast}
+        onHide={() => setShowToast(false)}
+        type="error"
+      />
     </>
   );
 }
