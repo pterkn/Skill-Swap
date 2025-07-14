@@ -78,10 +78,10 @@ export default function Review() {
         createdAt: new Date()
       });
       setSubmitted(true);
-      setToastMsg('✅ Review submitted!');
+      setToastMsg(' Review submitted!');
       setShowToast(true);
     } catch (err) {
-      setToastMsg('❌ Failed to submit review.');
+      setToastMsg(' Failed to submit review.');
       setShowToast(true);
     }
   };
@@ -113,7 +113,7 @@ export default function Review() {
         {hasReviewed ? (
           <Card sx={{ mt: 4 }}>
             <CardContent>
-              <Typography>You already submitted a review for this user ✅</Typography>
+              <Typography>You already submitted a review for this user </Typography>
             </CardContent>
           </Card>
         ) : submitted ? (

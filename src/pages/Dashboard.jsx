@@ -15,12 +15,17 @@ import {
   MenuItem,
   Select,
   InputLabel,
-  FormControl
+  FormControl,
+  CircularProgress,
+  IconButton,
+  Chip
 } from '@mui/material';
 import BuildIcon from '@mui/icons-material/Build';
 import CodeIcon from '@mui/icons-material/Code';
 import DesignServicesIcon from '@mui/icons-material/DesignServices';
 import SchoolIcon from '@mui/icons-material/School';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { motion } from 'framer-motion';
 import { auth, db } from '../firebase';
 import {
@@ -28,7 +33,11 @@ import {
   addDoc,
   onSnapshot,
   query,
-  orderBy
+  orderBy,
+  deleteDoc,
+  getDocs,
+  where,
+  doc
 } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
@@ -43,7 +52,7 @@ export default function Dashboard() {
   const [toastMsg, setToastMsg] = useState('');
   const [showToast, setShowToast] = useState(false);
   const [tab, setTab] = useState('community');
-
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -55,8 +64,9 @@ export default function Dashboard() {
 
     const q = query(collection(db, 'skills'), orderBy('offered'));
     const unsub = onSnapshot(q, (snap) => {
-      const list = snap.docs.map((doc) => doc.data());
+      const list = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
       setSkills(list);
+      setLoading(false);
     });
 
     return () => unsub();
@@ -81,6 +91,17 @@ export default function Dashboard() {
       setShowToast(true);
     } catch (err) {
       setToastMsg('❌ Failed to add skill.');
+      setShowToast(true);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await deleteDoc(doc(db, 'skills', id));
+      setToastMsg('🗑️ Skill deleted.');
+      setShowToast(true);
+    } catch (err) {
+      setToastMsg('❌ Failed to delete skill.');
       setShowToast(true);
     }
   };
@@ -170,75 +191,86 @@ export default function Dashboard() {
           </Tabs>
         </Box>
 
-        <Grid container spacing={3}>
-          {filteredSkills.length === 0 ? (
-            <Grid item xs={12}>
-              <Typography>No matching skills found.</Typography>
-            </Grid>
-          ) : (
-            filteredSkills.map((skill, i) => (
-              <Grid item xs={12} sm={6} md={4} key={i}>
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: i * 0.05 }}
-                >
-                  <Card elevation={3}>
-                    <CardContent>
-                      <Box display="flex" alignItems="center" mb={1}>
-                        <img
-                          src={`https://ui-avatars.com/api/?name=${skill.email}&background=random`}
-                          alt="Avatar"
-                          style={{
-                            borderRadius: '50%',
-                            width: 40,
-                            height: 40,
-                            marginRight: 10
-                          }}
-                        />
-                        <Typography variant="subtitle1">
-                          <strong>{skill.email}</strong>
-                        </Typography>
-                      </Box>
-
-                      <Typography>
-                        <strong>Offers:</strong> {getSkillIcon(skill.category)} {skill.offered}
-                      </Typography>
-                      <Typography>
-                        <strong>Wants:</strong> {getSkillIcon(skill.category)} {skill.requested}
-                      </Typography>
-                    </CardContent>
-
-                    <Divider />
-
-                    <CardActions>
-                      {skill.email !== auth.currentUser.email && (
-                        <>
-                          <Button
-                            size="small"
-                            onClick={() =>
-                              navigate(`/chat?partner=${skill.email}`)
-                            }
-                          >
-                            Chat
-                          </Button>
-                          <Button
-                            size="small"
-                            onClick={() =>
-                              navigate(`/review?user=${skill.email}`)
-                            }
-                          >
-                            Rate
-                          </Button>
-                        </>
-                      )}
-                    </CardActions>
-                  </Card>
-                </motion.div>
+        {loading ? (
+          <Box display="flex" justifyContent="center" my={5}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <Grid container spacing={3}>
+            {filteredSkills.length === 0 ? (
+              <Grid item xs={12}>
+                <Typography>No matching skills found.</Typography>
               </Grid>
-            ))
-          )}
-        </Grid>
+            ) : (
+              filteredSkills.map((skill, i) => (
+                <Grid item xs={12} sm={6} md={4} key={i}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: i * 0.05 }}
+                  >
+                    <Card elevation={3}>
+                      <CardContent>
+                        <Box display="flex" alignItems="center" mb={1}>
+                          <img
+                            src={`https://ui-avatars.com/api/?name=${skill.email}&background=random`}
+                            alt="Avatar"
+                            style={{
+                              borderRadius: '50%',
+                              width: 40,
+                              height: 40,
+                              marginRight: 10
+                            }}
+                          />
+                          <Typography variant="subtitle1">
+                            <strong>{skill.email}</strong>
+                          </Typography>
+                        </Box>
+
+                        <Typography>
+                          <strong>Offers:</strong> {getSkillIcon(skill.category)} {skill.offered}
+                        </Typography>
+                        <Typography>
+                          <strong>Wants:</strong> {getSkillIcon(skill.category)} {skill.requested}
+                        </Typography>
+                        <Box mt={1}>
+                          <Chip label={`Category: ${skill.category}`} size="small" />
+                        </Box>
+                      </CardContent>
+
+                      <Divider />
+
+                      <CardActions>
+                        {skill.email === auth.currentUser.email ? (
+                          <>
+                            <IconButton onClick={() => handleDelete(skill.id)}>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              size="small"
+                              onClick={() => navigate(`/chat?partner=${skill.email}`)}
+                            >
+                              Chat
+                            </Button>
+                            <Button
+                              size="small"
+                              onClick={() => navigate(`/review?user=${skill.email}`)}
+                            >
+                              Rate
+                            </Button>
+                          </>
+                        )}
+                      </CardActions>
+                    </Card>
+                  </motion.div>
+                </Grid>
+              ))
+            )}
+          </Grid>
+        )}
       </Container>
 
       <Toast
