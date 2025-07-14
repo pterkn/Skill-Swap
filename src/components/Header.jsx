@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { auth } from '../firebase';
-import '../style.css';
+import { AppBar, Toolbar, Typography, Box, Button, Avatar } from '@mui/material';
 
 export default function Header({ showLogout = false }) {
   const navigate = useNavigate();
@@ -13,19 +12,37 @@ export default function Header({ showLogout = false }) {
   };
 
   return (
-    <header className="site-header">
-      <div className="header-left">
-        <img src="/logo.png" alt="SkillSwap Logo" className="logo" />
-        <h1 className="site-title">
-          <Link to="/dashboard">SkillSwap</Link>
-        </h1>
-      </div>
+    <AppBar position="static" color="default" elevation={1}>
+      <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
+        <Box display="flex" alignItems="center">
+          <Avatar
+            alt="SkillSwap Logo"
+            src="/logo.png"
+            sx={{ width: 40, height: 40, mr: 1 }}
+          />
+          <Typography variant="h6" component={Link} to="/dashboard" sx={{ textDecoration: 'none', color: 'inherit' }}>
+            SkillSwap
+          </Typography>
+        </Box>
 
-      {showLogout && (
-        <button className="logout-btn" onClick={handleLogout}>
-          Logout
-        </button>
-      )}
-    </header>
+        {showLogout && (
+          <Button
+            variant="contained"
+            color="error"
+            size="small"
+            sx={{
+              minWidth: '100px',
+              padding: '6px 12px',
+              fontWeight: 'bold',
+              borderRadius: '8px',
+              textTransform: 'none'
+            }}
+            onClick={handleLogout}
+          >
+            Logout
+          </Button>
+        )}
+      </Toolbar>
+    </AppBar>
   );
 }
