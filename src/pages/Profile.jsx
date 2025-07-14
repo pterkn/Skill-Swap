@@ -1,116 +1,123 @@
-
-import React, { useEffect, useState } from 'react';
-import { auth, db } from '../firebase';
+import React, { useState, useEffect } from 'react';
 import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  where,
-  setDoc
-} from 'firebase/firestore';
-import { useNavigate } from 'react-router-dom';
+  Box,
+  Container,
+  Typography,
+  Avatar,
+  TextField,
+  Button,
+  CircularProgress,
+  Snackbar
+} from '@mui/material';
+import { auth, db } from '../firebase';
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import Header from '../components/Header';
-import Toast from '../components/Toast';
-import '../style.css';
 
 export default function Profile() {
-  const [userEmail, setUserEmail] = useState('');
-  const [skills, setSkills] = useState([]);
-  const [profile, setProfile] = useState({ displayName: '', bio: '' });
-  const [edit, setEdit] = useState(false);
-  const [toastMsg, setToastMsg] = useState('');
-  const [showToast, setShowToast] = useState(false);
-  const navigate = useNavigate();
+  const [userData, setUserData] = useState({ name: '', bio: '', skills: '' });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [snackOpen, setSnackOpen] = useState(false);
+
+  const user = auth.currentUser;
 
   useEffect(() => {
-    auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        setUserEmail(user.email);
-        fetchSkills(user.email);
-        fetchProfile(user.email);
-      } else {
-        navigate('/');
-      }
-    });
-  }, [navigate]);
+    if (!user) return;
 
-  const fetchSkills = async (email) => {
-    const q = query(collection(db, 'skills'), where('email', '==', email));
-    const snap = await getDocs(q);
-    setSkills(snap.docs.map(doc => doc.data()));
-  };
+    const fetchProfileAndSkills = async () => {
+      const ref = doc(db, 'profiles', user.email);
+      const snap = await getDoc(ref);
+      let data = snap.exists() ? snap.data() : {};
 
-  const fetchProfile = async (email) => {
-    const ref = doc(db, 'users', email);
-    const snap = await getDoc(ref);
-    if (snap.exists()) setProfile(snap.data());
+      const skillsSnap = await getDocs(
+        query(collection(db, 'skills'), where('email', '==', user.email))
+      );
+      const offeredSkills = [...new Set(skillsSnap.docs.map(doc => doc.data().offered))];
+      const skillsStr = offeredSkills.join(', ');
+
+      setUserData({
+        name: data.name || '',
+        bio: data.bio || '',
+        skills: data.skills || skillsStr
+      });
+
+      setLoading(false);
+    };
+
+    fetchProfileAndSkills();
+  }, [user]);
+
+  const handleChange = (e) => {
+    setUserData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSave = async () => {
-    try {
-      await setDoc(doc(db, 'users', userEmail), {
-        ...profile,
-        updatedAt: new Date()
-      });
-      setToastMsg(' Profile updated');
-      setShowToast(true);
-      setEdit(false);
-    } catch (err) {
-      setToastMsg(' Failed to update profile');
-      setShowToast(true);
-    }
+    if (!user) return;
+    setSaving(true);
+    await setDoc(doc(db, 'profiles', user.email), userData);
+    setSaving(false);
+    setSnackOpen(true);
   };
 
   return (
     <>
       <Header showLogout={true} />
-      <div className="container">
-        <h2>Your Profile</h2>
-        <p><strong>Email:</strong> {userEmail}</p>
+      <Container maxWidth="sm">
+        <Box mt={4} textAlign="center">
+          <Avatar
+            src={`https://ui-avatars.com/api/?name=${user?.email}`}
+            sx={{ width: 100, height: 100, margin: 'auto', mb: 2 }}
+          />
+          <Typography variant="h5">My Profile</Typography>
+        </Box>
 
-        {edit ? (
-          <>
-            <input
-              type="text"
-              placeholder="Display Name"
-              value={profile.displayName}
-              onChange={(e) => setProfile({ ...profile, displayName: e.target.value })}
-            />
-            <textarea
-              placeholder="Bio"
-              value={profile.bio}
-              onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
-            />
-            <button onClick={handleSave}>Save</button>
-          </>
+        {loading ? (
+          <Box mt={4} textAlign="center">
+            <CircularProgress />
+          </Box>
         ) : (
-          <>
-            <p><strong>Name:</strong> {profile.displayName || '(Not set)'}</p>
-            <p><strong>Bio:</strong> {profile.bio || '(No bio)'}</p>
-            <button onClick={() => setEdit(true)}>Edit Profile</button>
-          </>
+          <Box component="form" mt={3} display="flex" flexDirection="column" gap={2}>
+            <TextField
+              label="Name"
+              name="name"
+              value={userData.name}
+              onChange={handleChange}
+              fullWidth
+            />
+            <TextField
+              label="Bio"
+              name="bio"
+              multiline
+              rows={3}
+              value={userData.bio}
+              onChange={handleChange}
+              fullWidth
+            />
+            <TextField
+              label="Skills"
+              name="skills"
+              placeholder="e.g. Design, Python, Cooking"
+              value={userData.skills}
+              onChange={handleChange}
+              fullWidth
+            />
+            <Button
+              variant="contained"
+              onClick={handleSave}
+              disabled={saving}
+            >
+              {saving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </Box>
         )}
 
-        <h3>Your Skills</h3>
-        <ul>
-          {skills.length === 0 ? (
-            <li>No skills listed.</li>
-          ) : (
-            skills.map((s, i) => (
-              <li key={i}>Offers <strong>{s.offered}</strong> | Wants <strong>{s.requested}</strong></li>
-            ))
-          )}
-        </ul>
-      </div>
-
-      <Toast
-        message={toastMsg}
-        visible={showToast}
-        onHide={() => setShowToast(false)}
-        type="info"
-      />
+        <Snackbar
+          open={snackOpen}
+          autoHideDuration={3000}
+          onClose={() => setSnackOpen(false)}
+          message="✅ Profile updated!"
+        />
+      </Container>
     </>
   );
 }
