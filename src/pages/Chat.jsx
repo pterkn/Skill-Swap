@@ -1,4 +1,4 @@
-// src/pages/Chat.jsx
+
 import React, { useEffect, useState, useRef } from 'react';
 import {
   Container,
