@@ -5,8 +5,13 @@ import {
   TextField,
   Button,
   Box,
-  LinearProgress
+  LinearProgress,
+  InputAdornment,
+  IconButton,
+  CircularProgress,
+  Fade
 } from '@mui/material';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useNavigate, Link } from 'react-router-dom';
 import { auth } from '../firebase';
@@ -17,9 +22,11 @@ export default function Signup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [strength, setStrength] = useState(0);
   const [toastMsg, setToastMsg] = useState('');
   const [showToast, setShowToast] = useState(false);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const getStrength = (pass) => {
@@ -31,19 +38,41 @@ export default function Signup() {
     return score;
   };
 
+  const getStrengthLabel = (score) => {
+    if (score <= 1) return 'Weak';
+    if (score <= 3) return 'Moderate';
+    return 'Strong';
+  };
+
+  const getStrengthColor = (score) => {
+    if (score <= 1) return 'error';
+    if (score <= 3) return 'warning';
+    return 'success';
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (password !== confirm) {
       setToastMsg('Passwords do not match');
       setShowToast(true);
       return;
     }
+
+    if (strength < 2) {
+      setToastMsg('Password is too weak');
+      setShowToast(true);
+      return;
+    }
+
     try {
+      setLoading(true);
       await createUserWithEmailAndPassword(auth, email, password);
       navigate('/dashboard');
     } catch (err) {
       setToastMsg('Signup failed. Try again.');
       setShowToast(true);
+      setLoading(false);
     }
   };
 
@@ -57,69 +86,111 @@ export default function Signup() {
     <>
       <Header />
       <Container maxWidth="sm">
-        <Box mt={6}>
-          <Box textAlign="center" mb={4}>
-            <img
-              src="/logo.png"
-              alt="SkillSwap Logo"
-              style={{ height: '60px', marginBottom: '1rem' }}
-            />
-            <Typography variant="h4" sx={{ fontFamily: 'Georgia, serif', color: 'primary.main', fontWeight: 'bold' }}>
-              Create Your Account
-            </Typography>
+        <Fade in timeout={600}>
+          <Box mt={6} px={3} py={4} boxShadow={2} borderRadius={2} bgcolor="#fff">
+            <Box textAlign="center" mb={4}>
+              <img
+                src="/logo.png"
+                alt="SkillSwap Logo"
+                style={{
+                  height: '60px',
+                  marginBottom: '1rem',
+                  borderRadius: '50%',
+                  padding: '6px',
+                  backgroundColor: '#FEFFEC',
+                  border: '2px solid #023020'
+                }}
+              />
+              <Typography
+                variant="h4"
+                sx={{
+                  fontFamily: 'Georgia, serif',
+                  color: 'primary.main',
+                  fontWeight: 'bold'
+                }}
+              >
+                Create Your Account
+              </Typography>
+            </Box>
+
+            <form onSubmit={handleSubmit}>
+              <TextField
+                label="Email"
+                type="email"
+                fullWidth
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                margin="normal"
+                required
+              />
+
+              <TextField
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                fullWidth
+                value={password}
+                onChange={handlePasswordChange}
+                margin="normal"
+                required
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowPassword(!showPassword)}
+                        edge="end"
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  )
+                }}
+              />
+
+              <Box display="flex" alignItems="center" justifyContent="space-between" mt={1}>
+                <Typography variant="caption" color="text.secondary">
+                  Strength: {getStrengthLabel(strength)}
+                </Typography>
+              </Box>
+
+              <LinearProgress
+                variant="determinate"
+                value={(strength / 4) * 100}
+                color={getStrengthColor(strength)}
+                sx={{ height: 8, borderRadius: 5, mb: 2 }}
+              />
+
+              <TextField
+                label="Confirm Password"
+                type="password"
+                fullWidth
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                margin="normal"
+                required
+              />
+
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+                fullWidth
+                sx={{ py: 1.2, mt: 1 }}
+                disabled={loading}
+              >
+                {loading ? <CircularProgress size={24} color="inherit" /> : 'Sign Up'}
+              </Button>
+            </form>
+
+            <Box textAlign="center" mt={3}>
+              <Typography variant="body2">
+                Already have an account?{' '}
+                <Link to="/" style={{ color: '#023020' }}>
+                  Login
+                </Link>
+              </Typography>
+            </Box>
           </Box>
-
-          <form onSubmit={handleSubmit}>
-            <TextField
-              label="Email"
-              type="email"
-              fullWidth
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              margin="normal"
-              required
-            />
-            <TextField
-              label="Password"
-              type="password"
-              fullWidth
-              value={password}
-              onChange={handlePasswordChange}
-              margin="normal"
-              required
-            />
-            <LinearProgress
-              variant="determinate"
-              value={(strength / 4) * 100}
-              sx={{ height: 8, borderRadius: 5, mb: 2 }}
-            />
-            <TextField
-              label="Confirm Password"
-              type="password"
-              fullWidth
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              margin="normal"
-              required
-            />
-
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              fullWidth
-              sx={{ mt: 2 }}
-            >
-              Sign Up
-            </Button>
-          </form>
-
-          <Box textAlign="center" mt={2}>
-            <Typography variant="body2">
-              Already have an account? <Link to="/">Login</Link>
-            </Typography>
-          </Box>
-        </Box>
+        </Fade>
       </Container>
 
       <Toast

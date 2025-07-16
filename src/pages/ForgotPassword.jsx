@@ -5,7 +5,8 @@ import {
   TextField,
   Button,
   Box,
-  CircularProgress
+  CircularProgress,
+  Fade
 } from '@mui/material';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebase';
@@ -21,9 +22,8 @@ export default function ForgotPassword() {
 
   const handleReset = async (e) => {
     e.preventDefault();
-
     if (!email) {
-      setToastMsg('Please enter your email');
+      setToastMsg('Enter your email');
       setShowToast(true);
       return;
     }
@@ -31,15 +31,14 @@ export default function ForgotPassword() {
     setLoading(true);
     try {
       await sendPasswordResetEmail(auth, email);
-      setToastMsg('📩 Password reset link sent!');
-    } catch (err) {
-      if (err.code === 'auth/user-not-found') {
-        setToastMsg('No account found with that email.');
-      } else {
-        setToastMsg('Something went wrong. Try again.');
-      }
-    } finally {
+      setToastMsg('Password reset link sent ✅');
       setShowToast(true);
+      setEmail('');
+    } catch (err) {
+      console.error(err);
+      setToastMsg('Failed to send reset link ❌');
+      setShowToast(true);
+    } finally {
       setLoading(false);
     }
   };
@@ -48,46 +47,69 @@ export default function ForgotPassword() {
     <>
       <Header />
       <Container maxWidth="sm">
-        <Box mt={6} px={3} py={4} boxShadow={2} borderRadius={2} bgcolor="#fff">
-          <Box textAlign="center" mb={3}>
-            <img src="/logo.png" alt="SkillSwap Logo" style={{ height: 60, marginBottom: 16 }} />
-            <Typography variant="h5" sx={{ fontFamily: 'Georgia, serif', fontWeight: 'bold' }}>
-              Reset Your Password
-            </Typography>
+        <Fade in timeout={600}>
+          <Box mt={6} px={3} py={4} boxShadow={2} borderRadius={2} bgcolor="#fff">
+            <Box textAlign="center" mb={4}>
+              <img
+                src="/logo.png"
+                alt="SkillSwap Logo"
+                style={{
+                  height: '60px',
+                  marginBottom: '1rem',
+                  borderRadius: '50%',
+                  padding: '6px',
+                  backgroundColor: '#FEFFEC',
+                  border: '2px solid #023020'
+                }}
+              />
+              <Typography
+                variant="h5"
+                sx={{
+                  fontFamily: 'Georgia, serif',
+                  color: 'primary.main',
+                  fontWeight: 'bold'
+                }}
+              >
+                Reset Your Password
+              </Typography>
+              <Typography variant="body2" mt={1}>
+                Enter your email and we'll send a reset link
+              </Typography>
+            </Box>
+
+            <form onSubmit={handleReset}>
+              <TextField
+                label="Email"
+                type="email"
+                fullWidth
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                margin="normal"
+                required
+              />
+
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+                fullWidth
+                sx={{ mt: 2, py: 1.2 }}
+                disabled={loading}
+              >
+                {loading ? <CircularProgress size={24} color="inherit" /> : 'Send Reset Link'}
+              </Button>
+            </form>
+
+            <Box textAlign="center" mt={3}>
+              <Typography variant="body2">
+                Remembered?{' '}
+                <Link to="/" style={{ color: '#023020' }}>
+                  Back to Login
+                </Link>
+              </Typography>
+            </Box>
           </Box>
-
-          <form onSubmit={handleReset}>
-            <TextField
-              label="Email Address"
-              type="email"
-              fullWidth
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              margin="normal"
-            />
-
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              fullWidth
-              sx={{ mt: 2, py: 1.2 }}
-              disabled={loading}
-            >
-              {loading ? <CircularProgress size={24} /> : 'Send Reset Link'}
-            </Button>
-          </form>
-
-          <Box textAlign="center" mt={3}>
-            <Typography variant="body2">
-              Remembered your password?{' '}
-              <Link to="/" style={{ color: '#023020' }}>
-                Go back to Login
-              </Link>
-            </Typography>
-          </Box>
-        </Box>
+        </Fade>
       </Container>
 
       <Toast

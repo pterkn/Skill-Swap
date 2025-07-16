@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Container,
   Typography,
@@ -8,10 +8,15 @@ import {
   Button,
   Card,
   CardContent,
-  Divider
+  Divider,
+  Avatar,
+  Fade,
+  LinearProgress
 } from '@mui/material';
 import { useLocation } from 'react-router-dom';
-import { collection, addDoc, getDocs, query, where, orderBy } from 'firebase/firestore';
+import {
+  collection, addDoc, getDocs, query, where, orderBy
+} from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import Header from '../components/Header';
 import Toast from '../components/Toast';
@@ -27,6 +32,7 @@ export default function Review() {
   const [submitted, setSubmitted] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(false);
   const [pastReviews, setPastReviews] = useState([]);
+  const commentRef = useRef(null);
 
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
@@ -78,10 +84,13 @@ export default function Review() {
         createdAt: new Date()
       });
       setSubmitted(true);
-      setToastMsg('✅ Review submitted!');
+      setToastMsg(' Review submitted!');
       setShowToast(true);
+      setTimeout(() => {
+        window.scrollTo({ top: commentRef.current?.offsetTop, behavior: 'smooth' });
+      }, 400);
     } catch (err) {
-      setToastMsg('❌ Failed to submit review.');
+      setToastMsg(' Failed to submit review.');
       setShowToast(true);
     }
   };
@@ -103,19 +112,21 @@ export default function Review() {
     <>
       <Header showLogout={true} />
       <Container maxWidth="sm">
-        <Box mt={4} textAlign="center">
-          <Typography variant="h4" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
-            Leave a Review
-          </Typography>
-          <Typography variant="subtitle1" mt={1}>
-            for <strong>{targetEmail}</strong>
-          </Typography>
-        </Box>
+        <Fade in timeout={600}>
+          <Box mt={4} textAlign="center">
+            <Typography variant="h4" sx={{ color: 'primary.main', fontWeight: 'bold', fontFamily: 'Georgia, serif' }}>
+              Leave a Review
+            </Typography>
+            <Typography variant="subtitle1" mt={1}>
+              for <strong>{targetEmail}</strong>
+            </Typography>
+          </Box>
+        </Fade>
 
         {hasReviewed ? (
           <Card sx={{ mt: 4, backgroundColor: '#FEFFEC' }}>
             <CardContent>
-              <Typography>You already submitted a review for this user </Typography>
+              <Typography>You already submitted a review for this user 🙅‍♂️</Typography>
             </CardContent>
           </Card>
         ) : submitted ? (
@@ -141,7 +152,10 @@ export default function Review() {
               rows={4}
               value={comment}
               onChange={(e) => setComment(e.target.value)}
+              inputRef={commentRef}
               required
+              helperText={`${comment.length}/300`}
+              inputProps={{ maxLength: 300 }}
             />
 
             <Button variant="contained" type="submit" fullWidth sx={{ mt: 2 }}>
@@ -150,7 +164,7 @@ export default function Review() {
           </Box>
         )}
 
-        {pastReviews.length > 0 && (
+        {pastReviews.length > 0 ? (
           <>
             <Box mt={6} textAlign="center">
               <Typography variant="h6">Average Rating</Typography>
@@ -175,8 +189,19 @@ export default function Review() {
                 <Typography variant="h6">Most Helpful Review</Typography>
                 <Card sx={{ mt: 2, backgroundColor: '#FEFFEC' }}>
                   <CardContent>
-                    <Typography variant="subtitle2">{mostHelpfulReview.reviewer}</Typography>
-                    <Rating value={mostHelpfulReview.rating} readOnly size="small" />
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <Avatar
+                        src={`https://ui-avatars.com/api/?name=${mostHelpfulReview.reviewer}`}
+                        alt="avatar"
+                      />
+                      <Box>
+                        <Typography variant="subtitle2">{mostHelpfulReview.reviewer}</Typography>
+                        <Rating value={mostHelpfulReview.rating} readOnly size="small" />
+                        <Typography variant="caption">
+                          {new Date(mostHelpfulReview.createdAt?.toDate?.() || mostHelpfulReview.createdAt).toLocaleDateString()}
+                        </Typography>
+                      </Box>
+                    </Box>
                     <Divider sx={{ my: 1 }} />
                     <Typography variant="body2">{mostHelpfulReview.comment}</Typography>
                   </CardContent>
@@ -185,13 +210,19 @@ export default function Review() {
             )}
 
             <Box mt={6}>
-              <Typography variant="h6">All Reviews</Typography>
+              <Typography variant="h6" ref={commentRef}>All Reviews</Typography>
               {pastReviews.map((r, i) => (
                 <Card key={i} sx={{ mt: 2, backgroundColor: '#FEFFEC' }}>
                   <CardContent>
-                    <Box display="flex" alignItems="center" justifyContent="space-between">
-                      <Typography variant="subtitle2">{r.reviewer}</Typography>
-                      <Rating value={r.rating} readOnly size="small" />
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <Avatar src={`https://ui-avatars.com/api/?name=${r.reviewer}`} />
+                      <Box>
+                        <Typography variant="subtitle2">{r.reviewer}</Typography>
+                        <Rating value={r.rating} readOnly size="small" />
+                        <Typography variant="caption">
+                          {new Date(r.createdAt?.toDate?.() || r.createdAt).toLocaleDateString()}
+                        </Typography>
+                      </Box>
                     </Box>
                     <Divider sx={{ my: 1 }} />
                     <Typography variant="body2">{r.comment}</Typography>
@@ -200,6 +231,12 @@ export default function Review() {
               ))}
             </Box>
           </>
+        ) : (
+          <Box mt={6} textAlign="center">
+            <Typography variant="body2" color="text.secondary">
+              📝 No reviews yet for this user.
+            </Typography>
+          </Box>
         )}
       </Container>
 
