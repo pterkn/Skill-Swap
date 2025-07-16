@@ -1,26 +1,70 @@
-// src/components/Toast.jsx
 import React, { useEffect } from 'react';
-import { Snackbar, Alert } from '@mui/material';
+import {
+  Snackbar,
+  Alert,
+  Slide,
+  IconButton,
+  Typography
+} from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 
-export default function Toast({ message, visible, onHide, type = 'info' }) {
+function SlideUpTransition(props) {
+  return <Slide {...props} direction="up" />;
+}
+
+export default function Toast({
+  message,
+  visible,
+  onHide,
+  type = 'info',
+  duration = 4000,
+  position = { vertical: 'bottom', horizontal: 'center' }
+}) {
   useEffect(() => {
     if (visible) {
-      const timer = setTimeout(() => onHide(), 3000);
+      const timer = setTimeout(() => onHide(), duration);
       return () => clearTimeout(timer);
     }
-  }, [visible, onHide]);
+  }, [visible, onHide, duration]);
 
   return (
     <Snackbar
       open={visible}
-      anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      anchorOrigin={position}
+      TransitionComponent={SlideUpTransition}
+      onClick={onHide}
     >
       <Alert
         severity={type}
         onClose={onHide}
-        sx={{ width: '100%', bgcolor: '#023020', color: '#FEFFEC', fontFamily: 'Georgia, serif' }}
+        variant="filled"
+        elevation={6}
+        sx={{
+          bgcolor: type === 'info'
+            ? '#023020'
+            : type === 'error'
+            ? '#b00020'
+            : '#2e7d32',
+          color: '#FEFFEC',
+          fontFamily: 'Georgia, serif',
+          borderRadius: 2,
+          px: 3,
+          py: 2,
+          minWidth: 300
+        }}
+        icon={false}
+        action={
+          <IconButton
+            size="small"
+            aria-label="close"
+            color="inherit"
+            onClick={onHide}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        }
       >
-        {message}
+        <Typography fontWeight="bold">{message}</Typography>
       </Alert>
     </Snackbar>
   );

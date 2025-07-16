@@ -40,6 +40,7 @@ export default function Chat() {
   const [file, setFile] = useState(null);
 
   const chatRef = useRef(null);
+  const bottomRef = useRef(null);
   const currentUser = auth.currentUser?.email || '';
   const chatId = [currentUser, partner].sort().join('_').replace(/\./g, '_');
 
@@ -57,6 +58,10 @@ export default function Chat() {
       setTimeout(() => setTyping(false), 2000);
     });
   }, [chatId, partner]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const sendMessage = async () => {
     if (!input.trim() && !file) return;
@@ -78,6 +83,11 @@ export default function Chat() {
 
     push(msgRef, message);
     setInput('');
+  };
+
+  const formatTimestamp = (ts) => {
+    const date = new Date(ts);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
@@ -112,7 +122,8 @@ export default function Chat() {
                     display: 'inline-block',
                     p: 1,
                     borderRadius: 2,
-                    maxWidth: '80%'
+                    maxWidth: '80%',
+                    boxShadow: 1
                   }}
                 >
                   {msg.text}
@@ -120,18 +131,30 @@ export default function Chat() {
                     <img src={msg.image} alt="uploaded" style={{ maxWidth: '100%', marginTop: '5px' }} />
                   )}
                   <br />
-                  <small style={{ opacity: 0.7 }}>{new Date(msg.timestamp).toLocaleTimeString()}</small>
+                  <small style={{ opacity: 0.7 }}>{formatTimestamp(msg.timestamp)}</small>
                 </Typography>
               </Box>
             ))
           )}
 
           {typing && (
-            <Typography variant="caption" color="text.secondary">
-              {partner} is typing...
-            </Typography>
+            <Box display="flex" gap={1} mt={1} ml={1}>
+              <Box className="dot" /><Box className="dot" /><Box className="dot" />
+            </Box>
           )}
+
+          <div ref={bottomRef} />
         </Paper>
+
+        {file && (
+          <Box mt={2}>
+            <img
+              src={URL.createObjectURL(file)}
+              alt="preview"
+              style={{ maxHeight: 100, borderRadius: 8 }}
+            />
+          </Box>
+        )}
 
         <Box display="flex" alignItems="center" mt={2} gap={1}>
           <TextField
@@ -145,7 +168,7 @@ export default function Chat() {
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">
-                  <IconButton onClick={sendMessage}>
+                  <IconButton onClick={sendMessage} disabled={!input.trim() && !file}>
                     <SendIcon />
                   </IconButton>
                 </InputAdornment>

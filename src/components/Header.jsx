@@ -11,7 +11,8 @@ import {
   Menu,
   MenuItem,
   Badge,
-  Tooltip
+  Tooltip,
+  Divider
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import Toast from './Toast';
@@ -24,6 +25,9 @@ export default function Header({ showLogout = false }) {
   const [notifications, setNotifications] = useState([]);
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
+  const [scrolled, setScrolled] = useState(false);
+
+  const user = auth.currentUser;
 
   const handleLogout = async () => {
     await auth.signOut();
@@ -36,7 +40,6 @@ export default function Header({ showLogout = false }) {
   const handleNotifClick = (event) => setNotifAnchor(event.currentTarget);
   const handleNotifClose = () => {
     setNotifAnchor(null);
-    setNotifications([]);
   };
 
   useEffect(() => {
@@ -55,7 +58,13 @@ export default function Header({ showLogout = false }) {
         const msg = msgSnap.val();
         if (msg.sender !== user.email) {
           setNotifications((prev) => [
-            { id: msgSnap.key, sender: msg.sender, text: msg.text, chatId },
+            {
+              id: msgSnap.key,
+              sender: msg.sender,
+              text: msg.text,
+              timestamp: msg.timestamp || Date.now(),
+              chatId
+            },
             ...prev
           ]);
           setToastMsg(`💬 New message from ${msg.sender}`);
@@ -65,8 +74,16 @@ export default function Header({ showLogout = false }) {
     });
   }, []);
 
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   const handleNotificationClick = (chatId, msgId) => {
-    const otherId = chatId.replace(auth.currentUser.email.replace(/\./g, '_'), '').replace('_', '');
+    const otherId = chatId
+      .replace(auth.currentUser.email.replace(/\./g, '_'), '')
+      .replace('_', '');
     navigate(`/chat?partner=${otherId}`);
     const notifRef = ref(dbRealtime, `chats/${chatId}/${msgId}`);
     remove(notifRef);
@@ -77,13 +94,13 @@ export default function Header({ showLogout = false }) {
   return (
     <>
       <AppBar
-        position="static"
-        elevation={0}
+        position="sticky"
+        elevation={scrolled ? 4 : 0}
         sx={{
-          backgroundColor: '#023020',
+          backgroundColor: scrolled ? '#022d1e' : '#023020',
           color: '#FEFFEC',
           borderRadius: 0,
-          boxShadow: '0 1px 6px rgba(0,0,0,0.1)'
+          transition: 'background-color 0.3s ease'
         }}
       >
         <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -94,14 +111,12 @@ export default function Header({ showLogout = false }) {
               sx={{ width: 40, height: 40, mr: 1 }}
             />
             <Typography
-              variant="h6"
+              variant="h5"
+              fontFamily="'Playfair Display', serif"
+              fontWeight="bold"
               component={Link}
               to="/dashboard"
-              sx={{
-                textDecoration: 'none',
-                color: '#FEFFEC',
-                fontFamily: 'Playfair Display, serif'
-              }}
+              sx={{ textDecoration: 'none', color: '#FEFFEC' }}
             >
               SkillSwap
             </Typography>
@@ -109,7 +124,11 @@ export default function Header({ showLogout = false }) {
 
           <Box display="flex" alignItems="center" gap={2}>
             <Tooltip title="Notifications">
-              <IconButton color="inherit" onClick={handleNotifClick}>
+              <IconButton
+                color="inherit"
+                onClick={handleNotifClick}
+                sx={{ '&:hover': { backgroundColor: 'rgba(255,255,255,0.08)' } }}
+              >
                 <Badge badgeContent={notifications.length} color="error">
                   <NotificationsIcon />
                 </Badge>
@@ -126,14 +145,33 @@ export default function Header({ showLogout = false }) {
               {notifications.length === 0 ? (
                 <MenuItem disabled>No new messages</MenuItem>
               ) : (
-                notifications.map((n) => (
+                <>
+                  {notifications.map((n) => (
+                    <MenuItem
+                      key={n.id}
+                      onClick={() => handleNotificationClick(n.chatId, n.id)}
+                    >
+                      <Box>
+                        <Typography variant="body2">
+                          <strong>{n.sender}</strong>: {n.text}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'gray' }}>
+                          {new Date(n.timestamp).toLocaleTimeString()}
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                  ))}
+                  <Divider />
                   <MenuItem
-                    key={n.id}
-                    onClick={() => handleNotificationClick(n.chatId, n.id)}
+                    onClick={() => {
+                      setNotifications([]);
+                      setNotifAnchor(null);
+                    }}
+                    sx={{ justifyContent: 'center', color: '#1976d2' }}
                   >
-                    <strong>{n.sender}</strong>: {n.text}
+                    Mark all as read
                   </MenuItem>
-                ))
+                </>
               )}
             </Menu>
 
@@ -150,10 +188,15 @@ export default function Header({ showLogout = false }) {
               anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
               transformOrigin={{ vertical: 'top', horizontal: 'right' }}
             >
+              <MenuItem disabled>
+                <Box>
+                  <Typography variant="body2"><strong>{auth.currentUser?.email}</strong></Typography>
+                  <Typography variant="caption" sx={{ color: 'gray' }}>Pro User</Typography>
+                </Box>
+              </MenuItem>
+              <Divider />
               <MenuItem onClick={() => navigate('/profile')}>Profile</MenuItem>
-              {showLogout && (
-                <MenuItem onClick={handleLogout}>Logout</MenuItem>
-              )}
+              {showLogout && <MenuItem onClick={handleLogout}>Logout</MenuItem>}
             </Menu>
           </Box>
         </Toolbar>
