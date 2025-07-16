@@ -1,4 +1,6 @@
+import React from 'react';
 import { Routes, Route } from 'react-router-dom';
+
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
@@ -11,11 +13,11 @@ import PrivateRoute from './components/PrivateRoute';
 export default function App() {
   return (
     <Routes>
-      {/* Public */}
+      {/* 🌐 Public Routes */}
       <Route path="/" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
 
-      {/* Protected */}
+      {/* 🔐 Protected Routes */}
       <Route path="/dashboard" element={
         <PrivateRoute><Dashboard /></PrivateRoute>
       } />

@@ -1,4 +1,3 @@
-// src/theme.js
 import { createTheme } from '@mui/material/styles';
 
 const theme = createTheme({
@@ -9,64 +8,80 @@ const theme = createTheme({
       contrastText: '#FEFFEC', // Ivory text
     },
     secondary: {
-      main: '#097969', // Accent green
+      main: '#097969', // Emerald/Dark Green
     },
     background: {
-      default: '#FEFFEC', // Global background
-      paper: '#ffffff',   // Card background
+      default: '#FEFFEC', // Ivory background
+      paper: '#fff',
     },
     text: {
-      primary: '#333', // Dark text
+      primary: '#333',
     },
-    error: {
-      main: '#d32f2f', // Error red
+    info: {
+      main: '#1976d2',
     },
     success: {
-      main: '#4caf50',
+      main: '#388e3c',
     },
+    error: {
+      main: '#d32f2f',
+    }
   },
-
   typography: {
     fontFamily: 'Georgia, serif',
-    h1: { fontWeight: 'bold' },
-    h2: { fontWeight: 'bold' },
-    h3: { fontWeight: 'bold' },
-    button: { textTransform: 'none' },
+    h1: { fontWeight: 700 },
+    h2: { fontWeight: 600 },
+    h4: { fontWeight: 600 },
   },
-
-  shape: {
-    borderRadius: 8, // Softer buttons and cards
-  },
-
   components: {
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          borderRadius: 0, // 🚫 remove curved edges from the header
+        }
+      }
+    },
     MuiButton: {
       styleOverrides: {
         root: {
-          fontWeight: 'bold',
-          padding: '0.6rem 1.2rem',
-          boxShadow: 'none',
-          '&:hover': {
-            backgroundColor: '#04532a',
-          },
-        },
-      },
-    },
-    MuiPaper: {
-      styleOverrides: {
-        root: {
-          borderRadius: 8,
-        },
-      },
+          borderRadius: 6,
+          textTransform: 'none',
+          fontWeight: 500,
+        }
+      }
     },
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: 8,
           backgroundColor: '#FEFFEC',
-        },
-      },
+          borderRadius: 10,
+        }
+      }
     },
-  },
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#fff',
+          borderRadius: 6,
+        }
+      }
+    },
+    MuiContainer: {
+      styleOverrides: {
+        root: {
+          paddingTop: '1.5rem',
+          paddingBottom: '1.5rem',
+        }
+      }
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#fff',
+        }
+      }
+    }
+  }
 });
 
 export default theme;

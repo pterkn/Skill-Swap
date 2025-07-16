@@ -1,5 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { auth, dbRealtime } from '../firebase';
 import {
   AppBar,
   Toolbar,
@@ -10,15 +11,11 @@ import {
   Menu,
   MenuItem,
   Badge,
-  Tooltip,
-  Divider
+  Tooltip
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
-import LogoutIcon from '@mui/icons-material/Logout';
-import { useNavigate, Link } from 'react-router-dom';
-import { auth, dbRealtime } from '../firebase';
-import { ref, onChildAdded, remove } from 'firebase/database';
 import Toast from './Toast';
+import { ref, onChildAdded, remove } from 'firebase/database';
 
 export default function Header({ showLogout = false }) {
   const navigate = useNavigate();
@@ -28,37 +25,25 @@ export default function Header({ showLogout = false }) {
   const [showToast, setShowToast] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
 
-  const user = auth.currentUser;
-  const userEmail = user?.email || '';
-  const userId = userEmail.replace(/\./g, '_');
-
   const handleLogout = async () => {
     await auth.signOut();
     navigate('/');
   };
 
-  const handleAvatarClick = (e) => setAnchorEl(e.currentTarget);
+  const handleAvatarClick = (event) => setAnchorEl(event.currentTarget);
   const handleMenuClose = () => setAnchorEl(null);
 
-  const handleNotifClick = (e) => setNotifAnchor(e.currentTarget);
+  const handleNotifClick = (event) => setNotifAnchor(event.currentTarget);
   const handleNotifClose = () => {
     setNotifAnchor(null);
     setNotifications([]);
   };
 
-  const handleNotificationClick = (chatId, msgId) => {
-    const otherUser = chatId
-      .split('_')
-      .find((part) => part !== userId)
-      .replace(/_/g, '.');
-    navigate(`/chat?partner=${otherUser}`);
-    remove(ref(dbRealtime, `chats/${chatId}/${msgId}`));
-    setNotifications((prev) => prev.filter((n) => n.id !== msgId));
-    handleNotifClose();
-  };
-
   useEffect(() => {
+    const user = auth.currentUser;
     if (!user) return;
+
+    const userId = user.email.replace(/\./g, '_');
     const chatsRef = ref(dbRealtime, 'chats');
 
     onChildAdded(chatsRef, (chatSnap) => {
@@ -68,7 +53,7 @@ export default function Header({ showLogout = false }) {
       const messagesRef = ref(dbRealtime, `chats/${chatId}`);
       onChildAdded(messagesRef, (msgSnap) => {
         const msg = msgSnap.val();
-        if (msg.sender !== userEmail) {
+        if (msg.sender !== user.email) {
           setNotifications((prev) => [
             { id: msgSnap.key, sender: msg.sender, text: msg.text, chatId },
             ...prev
@@ -78,19 +63,45 @@ export default function Header({ showLogout = false }) {
         }
       });
     });
-  }, [userEmail, userId]);
+  }, []);
+
+  const handleNotificationClick = (chatId, msgId) => {
+    const otherId = chatId.replace(auth.currentUser.email.replace(/\./g, '_'), '').replace('_', '');
+    navigate(`/chat?partner=${otherId}`);
+    const notifRef = ref(dbRealtime, `chats/${chatId}/${msgId}`);
+    remove(notifRef);
+    setNotifications((prev) => prev.filter((n) => n.id !== msgId));
+    setNotifAnchor(null);
+  };
 
   return (
     <>
-      <AppBar position="static" sx={{ bgcolor: '#023020', fontFamily: 'Georgia, serif' }}>
-        <Toolbar sx={{ justifyContent: 'space-between' }}>
+      <AppBar
+        position="static"
+        elevation={0}
+        sx={{
+          backgroundColor: '#023020',
+          color: '#FEFFEC',
+          borderRadius: 0,
+          boxShadow: '0 1px 6px rgba(0,0,0,0.1)'
+        }}
+      >
+        <Toolbar sx={{ display: 'flex', justifyContent: 'space-between' }}>
           <Box display="flex" alignItems="center">
-            <Avatar src="/logo.png" alt="SkillSwap Logo" sx={{ mr: 1, width: 40, height: 40 }} />
+            <Avatar
+              alt="SkillSwap Logo"
+              src="/logo.png"
+              sx={{ width: 40, height: 40, mr: 1 }}
+            />
             <Typography
               variant="h6"
               component={Link}
               to="/dashboard"
-              sx={{ textDecoration: 'none', color: '#FEFFEC', fontFamily: 'Georgia, serif' }}
+              sx={{
+                textDecoration: 'none',
+                color: '#FEFFEC',
+                fontFamily: 'Playfair Display, serif'
+              }}
             >
               SkillSwap
             </Typography>
@@ -111,33 +122,24 @@ export default function Header({ showLogout = false }) {
               onClose={handleNotifClose}
               anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
               transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-              PaperProps={{ sx: { bgcolor: '#FEFFEC', fontFamily: 'Georgia, serif' } }}
             >
-              <MenuItem disabled>
-                🔔 {notifications.length} New Message{notifications.length !== 1 ? 's' : ''}
-              </MenuItem>
-              <Divider />
               {notifications.length === 0 ? (
-                <MenuItem>No new messages</MenuItem>
+                <MenuItem disabled>No new messages</MenuItem>
               ) : (
                 notifications.map((n) => (
-                  <MenuItem key={n.id} onClick={() => handleNotificationClick(n.chatId, n.id)}>
-                    <Box>
-                      <Typography variant="body2"><strong>{n.sender}</strong>: {n.text}</Typography>
-                      <Typography variant="caption" sx={{ fontSize: '0.75rem', opacity: 0.7 }}>
-                        {new Date().toLocaleTimeString()}
-                      </Typography>
-                    </Box>
+                  <MenuItem
+                    key={n.id}
+                    onClick={() => handleNotificationClick(n.chatId, n.id)}
+                  >
+                    <strong>{n.sender}</strong>: {n.text}
                   </MenuItem>
                 ))
               )}
-              <Divider />
-              <MenuItem onClick={() => navigate('/chat')}>💬 View All Messages</MenuItem>
             </Menu>
 
             <Tooltip title="Account">
-              <IconButton onClick={handleAvatarClick}>
-                <Avatar src={`https://ui-avatars.com/api/?name=${userEmail}`} />
+              <IconButton onClick={handleAvatarClick} sx={{ p: 0 }}>
+                <Avatar src={`https://ui-avatars.com/api/?name=${auth.currentUser?.email}`} />
               </IconButton>
             </Tooltip>
 
@@ -147,16 +149,10 @@ export default function Header({ showLogout = false }) {
               onClose={handleMenuClose}
               anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
               transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-              PaperProps={{ sx: { fontFamily: 'Georgia, serif' } }}
             >
-              <MenuItem onClick={() => navigate('/profile')}>View Profile</MenuItem>
-              <MenuItem onClick={() => navigate('/profile#edit')}>Edit Bio</MenuItem>
-              <MenuItem onClick={() => navigate('/dashboard')}>My Skills</MenuItem>
-              <MenuItem onClick={() => navigate(`/review?user=${userEmail}`)}>My Reviews</MenuItem>
+              <MenuItem onClick={() => navigate('/profile')}>Profile</MenuItem>
               {showLogout && (
-                <MenuItem onClick={handleLogout} sx={{ color: 'red' }}>
-                  <LogoutIcon fontSize="small" sx={{ mr: 1 }} /> Logout
-                </MenuItem>
+                <MenuItem onClick={handleLogout}>Logout</MenuItem>
               )}
             </Menu>
           </Box>
