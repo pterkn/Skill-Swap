@@ -14,12 +14,14 @@ import {
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useNavigate, Link } from 'react-router-dom';
-import { auth } from '../firebase';
+import { auth, db } from '../firebase';
+import { setDoc, doc, serverTimestamp } from 'firebase/firestore';
 import Header from '../components/Header';
 import Toast from '../components/Toast';
 
 export default function Signup() {
   const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -53,6 +55,12 @@ export default function Signup() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!name.trim()) {
+      setToastMsg('Please enter your full name');
+      setShowToast(true);
+      return;
+    }
+
     if (password !== confirm) {
       setToastMsg('Passwords do not match');
       setShowToast(true);
@@ -67,10 +75,25 @@ export default function Signup() {
 
     try {
       setLoading(true);
-      await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      await setDoc(doc(db, 'users', email), {
+        email,
+        name,
+        bio: '',
+        availability: 'available',
+        skillLevel: 'beginner',
+        status: 'online',
+        lastSeen: serverTimestamp(),
+        createdAt: serverTimestamp()
+      });
+
+      setToastMsg(`Signup successful! Welcome, ${name}`);
+      setShowToast(true);
       navigate('/dashboard');
     } catch (err) {
-      setToastMsg('Signup failed. Try again.');
+      setToastMsg(err.code === 'auth/email-already-in-use' ? 'Email already in use' : 'Signup failed. Try again.');
       setShowToast(true);
       setLoading(false);
     }
@@ -92,28 +115,23 @@ export default function Signup() {
               <img
                 src="/logo.png"
                 alt="SkillSwap Logo"
-                style={{
-                  height: '60px',
-                  marginBottom: '1rem',
-                  borderRadius: '50%',
-                  padding: '6px',
-                  backgroundColor: '#FEFFEC',
-                  border: '2px solid #023020'
-                }}
+                style={{ height: '60px', marginBottom: '1rem', borderRadius: '50%', padding: '6px', backgroundColor: '#FEFFEC', border: '2px solid #023020' }}
               />
-              <Typography
-                variant="h4"
-                sx={{
-                  fontFamily: 'Georgia, serif',
-                  color: 'primary.main',
-                  fontWeight: 'bold'
-                }}
-              >
+              <Typography variant="h4" sx={{ fontFamily: 'Georgia, serif', color: 'primary.main', fontWeight: 'bold' }}>
                 Create Your Account
               </Typography>
             </Box>
 
             <form onSubmit={handleSubmit}>
+              <TextField
+                label="Full Name"
+                fullWidth
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                margin="normal"
+                required
+              />
+
               <TextField
                 label="Email"
                 type="email"
@@ -135,10 +153,7 @@ export default function Signup() {
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
-                      <IconButton
-                        onClick={() => setShowPassword(!showPassword)}
-                        edge="end"
-                      >
+                      <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
                         {showPassword ? <VisibilityOff /> : <Visibility />}
                       </IconButton>
                     </InputAdornment>
@@ -197,7 +212,7 @@ export default function Signup() {
         message={toastMsg}
         visible={showToast}
         onHide={() => setShowToast(false)}
-        type="error"
+        type={toastMsg.includes('successful') ? 'success' : 'error'}
       />
     </>
   );
