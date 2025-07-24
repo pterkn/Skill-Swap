@@ -14,9 +14,10 @@ import {
 import { useNavigate, Link } from 'react-router-dom';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebase';
+import { auth, db } from '../firebase';
 import Header from '../components/Header';
 import Toast from '../components/Toast';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -27,6 +28,8 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  const isValidEmail = (email) => /\S+@\S+\.\S+/.test(email);
+
   const handleLogin = async (e) => {
     e.preventDefault();
 
@@ -36,14 +39,30 @@ export default function Login() {
       return;
     }
 
+    if (!isValidEmail(email)) {
+      setToastMsg('Please enter a valid email');
+      setShowToast(true);
+      return;
+    }
+
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
+
+      // Set user status online
+      await updateDoc(doc(db, 'users', email), {
+        status: 'online',
+        lastSeen: serverTimestamp()
+      });
+
       navigate('/dashboard');
     } catch (err) {
+      console.error(err);
       let message = 'Login failed. Please try again.';
       if (err.code === 'auth/wrong-password') message = 'Incorrect password.';
       if (err.code === 'auth/user-not-found') message = 'No account found.';
+      if (err.code === 'auth/invalid-email') message = 'Invalid email address.';
+      if (err.code === 'auth/too-many-requests') message = 'Too many attempts. Try again later.';
       setToastMsg(message);
       setShowToast(true);
       setLoading(false);
