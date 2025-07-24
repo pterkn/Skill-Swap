@@ -1,22 +1,26 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import {
   Container, Typography, Grid, Card, CardContent, CardActions, Button, TextField, Box,
-  MenuItem, Select, InputLabel, FormControl, Switch, FormControlLabel, Chip, Tooltip
+  MenuItem, Select, InputLabel, FormControl, Switch, FormControlLabel, Chip, Tooltip, Avatar, CircularProgress
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase';
 import {
-  collection, query, onSnapshot, orderBy
+  collection, query, onSnapshot, orderBy, getDocs
 } from 'firebase/firestore';
 import Header from '../components/Header';
 import { motion } from 'framer-motion';
+import StarIcon from '@mui/icons-material/Star';
+import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 
 export default function Matching() {
   const [skills, setSkills] = useState([]);
+  const [userMap, setUserMap] = useState({});
   const [category, setCategory] = useState('all');
   const [search, setSearch] = useState('');
   const [mutualOnly, setMutualOnly] = useState(false);
   const [sortOrder, setSortOrder] = useState('newest');
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const userEmail = auth.currentUser?.email;
 
@@ -27,18 +31,23 @@ export default function Matching() {
     const unsub = onSnapshot(q, (snap) => {
       const list = snap.docs.map((doc) => doc.data());
       setSkills(list);
+      setLoading(false);
     });
 
-    const interval = setInterval(() => {
-      // Trigger refresh by re-fetching
-      console.log("🔄 Auto refreshing matches...");
-    }, 30000);
-
-    return () => {
-      unsub();
-      clearInterval(interval);
-    };
+    return () => unsub();
   }, [userEmail]);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      const snap = await getDocs(collection(db, 'users'));
+      const map = {};
+      snap.forEach((doc) => {
+        map[doc.id] = doc.data();
+      });
+      setUserMap(map);
+    };
+    fetchUsers();
+  }, []);
 
   const userSkills = useMemo(() => skills.filter(s => s.email === userEmail), [skills, userEmail]);
 
@@ -47,8 +56,7 @@ export default function Matching() {
       if (skill.email === userEmail) return false;
 
       const matchCategory = category === 'all' || skill.category === category;
-      const matchSearch =
-        [skill.offered, skill.requested].join(' ').toLowerCase().includes(search.toLowerCase());
+      const matchSearch = [skill.offered, skill.requested].join(' ').toLowerCase().includes(search.toLowerCase());
 
       const mutualMatch = userSkills.some(
         (us) =>
@@ -67,6 +75,7 @@ export default function Matching() {
 
   const handleChat = (email) => navigate(`/chat?partner=${email}`);
   const handleRate = (email) => navigate(`/review?user=${email}`);
+  const handleProfile = (email) => navigate(`/profile?user=${email}`);
 
   return (
     <>
@@ -113,18 +122,17 @@ export default function Matching() {
           </FormControl>
 
           <FormControlLabel
-            control={
-              <Switch
-                checked={mutualOnly}
-                onChange={(e) => setMutualOnly(e.target.checked)}
-              />
-            }
+            control={<Switch checked={mutualOnly} onChange={(e) => setMutualOnly(e.target.checked)} />}
             label="Mutual Only"
           />
         </Box>
 
         <Grid container spacing={3} mt={2}>
-          {filteredMatches.length === 0 ? (
+          {loading ? (
+            <Grid item xs={12} textAlign="center">
+              <CircularProgress />
+            </Grid>
+          ) : filteredMatches.length === 0 ? (
             <Grid item xs={12}>
               <Typography>No matches found.</Typography>
             </Grid>
@@ -135,6 +143,15 @@ export default function Matching() {
                   us.offered.toLowerCase() === match.requested.toLowerCase() &&
                   us.requested.toLowerCase() === match.offered.toLowerCase()
               );
+
+              const user = userMap[match.email];
+              const isOnline = user?.status === 'online';
+              const lastSeen = user?.lastSeen?.toDate?.().toLocaleString?.() || 'Unknown';
+              const displayName = user?.name || match.email;
+              const bio = user?.bio || '';
+              const rating = user?.rating || 0;
+              const availability = user?.availability || '';
+              const skillLevel = user?.skillLevel || '';
 
               return (
                 <Grid item xs={12} sm={6} md={4} key={i}>
@@ -147,52 +164,48 @@ export default function Matching() {
                       <CardContent>
                         <Box display="flex" alignItems="center" mb={1}>
                           <Box sx={{ position: 'relative' }}>
-                            <img
-                              src={`https://ui-avatars.com/api/?name=${match.email}&background=023020&color=fff`}
-                              alt="Avatar"
-                              style={{ borderRadius: '50%', width: 40, height: 40, marginRight: 10 }}
-                            />
-                            <Box
-                              sx={{
-                                position: 'absolute',
-                                right: 5,
-                                bottom: 5,
-                                width: 10,
-                                height: 10,
-                                borderRadius: '50%',
-                                backgroundColor: 'green',
-                                border: '2px solid white'
-                              }}
-                            />
+                            <Avatar src={`https://ui-avatars.com/api/?name=${displayName}&background=023020&color=fff`} sx={{ width: 40, height: 40, mr: 1 }} />
+                            <Tooltip title={isOnline ? 'Online' : `Last seen: ${lastSeen}`}>
+                              <FiberManualRecordIcon
+                                sx={{
+                                  position: 'absolute',
+                                  bottom: 0,
+                                  right: 0,
+                                  color: isOnline ? 'green' : 'gray',
+                                  fontSize: 12,
+                                  border: '2px solid white',
+                                  borderRadius: '50%'
+                                }}
+                              />
+                            </Tooltip>
                           </Box>
-                          <Typography variant="subtitle1">
-                            <strong>{match.email}</strong>
-                          </Typography>
+                          <Tooltip title={bio} placement="top">
+                            <Typography variant="subtitle1" onClick={() => handleProfile(match.email)} sx={{ cursor: 'pointer', fontWeight: 'bold' }}>
+                              {displayName} {rating > 0 && (<><StarIcon sx={{ color: 'gold', fontSize: 18 }} /> {rating.toFixed(1)}</>)}
+                            </Typography>
+                          </Tooltip>
                         </Box>
 
                         <Typography><strong>Offers:</strong> {match.offered}</Typography>
                         <Typography><strong>Wants:</strong> {match.requested}</Typography>
+                        {availability && (
+                          <Chip label={availability} size="small" color="primary" sx={{ mt: 1, mr: 1 }} />
+                        )}
+                        {skillLevel && (
+                          <Chip label={skillLevel} size="small" color="secondary" sx={{ mt: 1 }} />
+                        )}
                         {match.createdAt && (
                           <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                            Added on: {new Date(match.createdAt?.seconds * 1000).toDateString()}
+                            Added on: {new Date(match.createdAt.seconds * 1000).toDateString()}
                           </Typography>
                         )}
                         {isMutual && (
-                          <Chip
-                            label="Mutual Match"
-                            size="small"
-                            color="success"
-                            sx={{ mt: 1 }}
-                          />
+                          <Chip label="Mutual Match" size="small" color="success" sx={{ mt: 1 }} />
                         )}
                       </CardContent>
                       <CardActions>
-                        <Button size="small" onClick={() => handleChat(match.email)}>
-                          Chat
-                        </Button>
-                        <Button size="small" onClick={() => handleRate(match.email)}>
-                          Rate
-                        </Button>
+                        <Button size="small" onClick={() => handleChat(match.email)}>Chat</Button>
+                        <Button size="small" onClick={() => handleRate(match.email)}>Rate</Button>
                       </CardActions>
                     </Card>
                   </motion.div>
