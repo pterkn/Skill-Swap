@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Typography,
@@ -9,16 +9,27 @@ import {
   Fade
 } from '@mui/material';
 import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../firebase';
+import { auth, db } from '../firebase';
 import Header from '../components/Header';
 import Toast from '../components/Toast';
 import { Link } from 'react-router-dom';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [toastMsg, setToastMsg] = useState('');
   const [showToast, setShowToast] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown > 0) {
+      const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [cooldown]);
+
+  const isValidEmail = (email) => /\S+@\S+\.\S+/.test(email);
 
   const handleReset = async (e) => {
     e.preventDefault();
@@ -28,15 +39,31 @@ export default function ForgotPassword() {
       return;
     }
 
+    if (!isValidEmail(email)) {
+      setToastMsg('Enter a valid email');
+      setShowToast(true);
+      return;
+    }
+
     setLoading(true);
     try {
       await sendPasswordResetEmail(auth, email);
-      setToastMsg('Password reset link sent ✅');
+      await addDoc(collection(db, 'passwordResets'), {
+        email,
+        requestedAt: serverTimestamp()
+      });
+      setToastMsg('✅ If that account exists, a reset link has been sent');
       setShowToast(true);
       setEmail('');
+      setCooldown(60);
     } catch (err) {
       console.error(err);
-      setToastMsg('Failed to send reset link ❌');
+      const code = err.code;
+      const msg =
+        code === 'auth/invalid-email'
+          ? 'Invalid email address ❌'
+          : 'Failed to send reset link ❌';
+      setToastMsg(msg);
       setShowToast(true);
     } finally {
       setLoading(false);
@@ -94,10 +121,16 @@ export default function ForgotPassword() {
                 color="primary"
                 fullWidth
                 sx={{ mt: 2, py: 1.2 }}
-                disabled={loading}
+                disabled={loading || cooldown > 0}
               >
                 {loading ? <CircularProgress size={24} color="inherit" /> : 'Send Reset Link'}
               </Button>
+
+              {cooldown > 0 && (
+                <Typography variant="caption" color="text.secondary" mt={1}>
+                  You can request again in {cooldown}s
+                </Typography>
+              )}
             </form>
 
             <Box textAlign="center" mt={3}>
