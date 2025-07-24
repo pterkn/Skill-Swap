@@ -1,10 +1,13 @@
+
 import React, { useEffect } from 'react';
 import {
   Snackbar,
   Alert,
   Slide,
   IconButton,
-  Typography
+  Typography,
+  Box,
+  Avatar
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 
@@ -18,7 +21,11 @@ export default function Toast({
   onHide,
   type = 'info',
   duration = 4000,
-  position = { vertical: 'bottom', horizontal: 'center' }
+  position = { vertical: 'bottom', horizontal: 'center' },
+  icon,
+  avatar,
+  sender,
+  timestamp
 }) {
   useEffect(() => {
     if (visible) {
@@ -44,13 +51,17 @@ export default function Toast({
             ? '#023020'
             : type === 'error'
             ? '#b00020'
-            : '#2e7d32',
+            : type === 'success'
+            ? '#2e7d32'
+            : '#333',
           color: '#FEFFEC',
           fontFamily: 'Georgia, serif',
           borderRadius: 2,
           px: 3,
           py: 2,
-          minWidth: 300
+          minWidth: 300,
+          display: 'flex',
+          alignItems: 'center'
         }}
         icon={false}
         action={
@@ -64,7 +75,24 @@ export default function Toast({
           </IconButton>
         }
       >
-        <Typography fontWeight="bold">{message}</Typography>
+        <Box display="flex" alignItems="center" gap={2}>
+          {avatar && (
+            <Avatar src={avatar} sx={{ width: 32, height: 32 }} />
+          )}
+          <Box>
+            {sender && (
+              <Typography variant="caption" fontWeight="bold">
+                {sender}
+              </Typography>
+            )}
+            <Typography fontWeight="bold">{message}</Typography>
+            {timestamp && (
+              <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </Typography>
+            )}
+          </Box>
+        </Box>
       </Alert>
     </Snackbar>
   );
