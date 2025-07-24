@@ -11,11 +11,15 @@ import {
   Divider,
   Avatar,
   Fade,
-  LinearProgress
+  LinearProgress,
+  MenuItem,
+  Select,
+  InputLabel,
+  FormControl
 } from '@mui/material';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
-  collection, addDoc, getDocs, query, where, orderBy
+  collection, addDoc, getDocs, query, where, orderBy, doc, getDoc
 } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import Header from '../components/Header';
@@ -32,39 +36,48 @@ export default function Review() {
   const [submitted, setSubmitted] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(false);
   const [pastReviews, setPastReviews] = useState([]);
+  const [loadingReviews, setLoadingReviews] = useState(true);
+  const [sortOrder, setSortOrder] = useState('newest');
   const commentRef = useRef(null);
-
   const location = useLocation();
+  const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
   const targetEmail = searchParams.get('user');
   const userEmail = auth.currentUser?.email;
 
   useEffect(() => {
-    const checkDuplicate = async () => {
+    const fetchAll = async () => {
       if (!userEmail || !targetEmail) return;
 
-      const q = query(
+      const checkDuplicate = query(
         collection(db, 'reviews'),
         where('reviewer', '==', userEmail),
         where('reviewee', '==', targetEmail)
       );
-      const snap = await getDocs(q);
-      if (!snap.empty) setHasReviewed(true);
-    };
+      const existing = await getDocs(checkDuplicate);
+      if (!existing.empty) setHasReviewed(true);
 
-    const fetchPastReviews = async () => {
-      const q = query(
+      const reviewQuery = query(
         collection(db, 'reviews'),
         where('reviewee', '==', targetEmail),
         orderBy('createdAt', 'desc')
       );
-      const snap = await getDocs(q);
-      const reviews = snap.docs.map(doc => doc.data());
-      setPastReviews(reviews);
+      const snap = await getDocs(reviewQuery);
+
+      const reviewsWithUsers = await Promise.all(
+        snap.docs.map(async (docSnap) => {
+          const data = docSnap.data();
+          const userDoc = await getDoc(doc(db, 'users', data.reviewer));
+          const userInfo = userDoc.exists() ? userDoc.data() : {};
+          return { ...data, reviewerInfo: userInfo };
+        })
+      );
+
+      setPastReviews(reviewsWithUsers);
+      setLoadingReviews(false);
     };
 
-    checkDuplicate();
-    fetchPastReviews();
+    fetchAll();
   }, [userEmail, targetEmail]);
 
   const handleSubmit = async (e) => {
@@ -95,6 +108,12 @@ export default function Review() {
     }
   };
 
+  const sortedReviews = [...pastReviews].sort((a, b) => {
+    if (sortOrder === 'highest') return b.rating - a.rating;
+    if (sortOrder === 'lowest') return a.rating - b.rating;
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
+
   const ratingCounts = [1, 2, 3, 4, 5].map((star) => ({
     name: `${star} ★`,
     count: pastReviews.filter((r) => r.rating === star).length
@@ -107,6 +126,11 @@ export default function Review() {
   const mostHelpfulReview = pastReviews.reduce((longest, current) => {
     return current.comment.length > (longest?.comment.length || 0) ? current : longest;
   }, null);
+
+  if (!auth.currentUser) {
+    navigate('/');
+    return null;
+  }
 
   return (
     <>
@@ -164,7 +188,9 @@ export default function Review() {
           </Box>
         )}
 
-        {pastReviews.length > 0 ? (
+        {loadingReviews ? (
+          <LinearProgress sx={{ mt: 6 }} />
+        ) : pastReviews.length > 0 ? (
           <>
             <Box mt={6} textAlign="center">
               <Typography variant="h6">Average Rating</Typography>
@@ -184,18 +210,30 @@ export default function Review() {
               </ResponsiveContainer>
             </Box>
 
+            <FormControl fullWidth sx={{ mt: 4 }}>
+              <InputLabel>Sort Reviews</InputLabel>
+              <Select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                label="Sort Reviews"
+              >
+                <MenuItem value="newest">Newest</MenuItem>
+                <MenuItem value="highest">Highest Rated</MenuItem>
+                <MenuItem value="lowest">Lowest Rated</MenuItem>
+              </Select>
+            </FormControl>
+
             {mostHelpfulReview && (
               <Box mt={4}>
                 <Typography variant="h6">Most Helpful Review</Typography>
                 <Card sx={{ mt: 2, backgroundColor: '#FEFFEC' }}>
                   <CardContent>
                     <Box display="flex" alignItems="center" gap={1}>
-                      <Avatar
-                        src={`https://ui-avatars.com/api/?name=${mostHelpfulReview.reviewer}`}
-                        alt="avatar"
-                      />
+                      <Avatar src={`https://ui-avatars.com/api/?name=${mostHelpfulReview.reviewer}`} />
                       <Box>
-                        <Typography variant="subtitle2">{mostHelpfulReview.reviewer}</Typography>
+                        <Typography variant="subtitle2">
+                          {mostHelpfulReview.reviewerInfo?.name || mostHelpfulReview.reviewer}
+                        </Typography>
                         <Rating value={mostHelpfulReview.rating} readOnly size="small" />
                         <Typography variant="caption">
                           {new Date(mostHelpfulReview.createdAt?.toDate?.() || mostHelpfulReview.createdAt).toLocaleDateString()}
@@ -211,13 +249,15 @@ export default function Review() {
 
             <Box mt={6}>
               <Typography variant="h6" ref={commentRef}>All Reviews</Typography>
-              {pastReviews.map((r, i) => (
+              {sortedReviews.map((r, i) => (
                 <Card key={i} sx={{ mt: 2, backgroundColor: '#FEFFEC' }}>
                   <CardContent>
                     <Box display="flex" alignItems="center" gap={1}>
                       <Avatar src={`https://ui-avatars.com/api/?name=${r.reviewer}`} />
                       <Box>
-                        <Typography variant="subtitle2">{r.reviewer}</Typography>
+                        <Typography variant="subtitle2">
+                          {r.reviewerInfo?.name || r.reviewer}
+                        </Typography>
                         <Rating value={r.rating} readOnly size="small" />
                         <Typography variant="caption">
                           {new Date(r.createdAt?.toDate?.() || r.createdAt).toLocaleDateString()}
