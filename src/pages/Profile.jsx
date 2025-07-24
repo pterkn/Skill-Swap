@@ -11,7 +11,9 @@ import {
   Rating,
   Card,
   CardContent,
-  Paper
+  Paper,
+  Chip,
+  Tooltip
 } from '@mui/material';
 import { auth, db } from '../firebase';
 import {
@@ -25,13 +27,16 @@ import {
   orderBy
 } from 'firebase/firestore';
 import Header from '../components/Header';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer } from 'recharts';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+dayjs.extend(relativeTime);
 
 export default function Profile() {
-  const [userData, setUserData] = useState({ name: '', bio: '' });
+  const [userData, setUserData] = useState({ name: '', bio: '', availability: '', skillLevel: '', online: false, lastSeen: null, joinedAt: null });
   const [editMode, setEditMode] = useState(false);
   const [reviews, setReviews] = useState([]);
-
+  const [skills, setSkills] = useState([]);
   const userEmail = auth.currentUser?.email;
 
   useEffect(() => {
@@ -52,8 +57,15 @@ export default function Profile() {
       setReviews(data);
     };
 
+    const fetchUserSkills = async () => {
+      const q = query(collection(db, 'skills'), where('email', '==', userEmail), orderBy('createdAt', 'desc'));
+      const snap = await getDocs(q);
+      setSkills(snap.docs.map(doc => doc.data()));
+    };
+
     fetchProfile();
     fetchReviews();
+    fetchUserSkills();
   }, [userEmail]);
 
   const handleUpdate = async () => {
@@ -82,20 +94,53 @@ export default function Profile() {
       <Container maxWidth="sm" sx={{ py: 4 }}>
         <Paper elevation={3} sx={{ p: 3, backgroundColor: '#FEFFEC' }}>
           <Box textAlign="center">
-            <Avatar
-              src={`https://ui-avatars.com/api/?name=${userEmail}&background=023020&color=fff`}
-              sx={{ width: 80, height: 80, mx: 'auto', mb: 2 }}
-            />
+            <Box sx={{ position: 'relative', display: 'inline-block' }}>
+              <Avatar
+                src={`https://ui-avatars.com/api/?name=${userEmail}&background=023020&color=fff`}
+                sx={{ width: 80, height: 80, mx: 'auto', mb: 2 }}
+              />
+              <Box
+                sx={{
+                  position: 'absolute',
+                  bottom: 8,
+                  right: 10,
+                  width: 14,
+                  height: 14,
+                  borderRadius: '50%',
+                  backgroundColor: userData.online ? 'green' : 'gray',
+                  border: '2px solid white'
+                }}
+              />
+            </Box>
+
             <Typography variant="h5" sx={{ fontFamily: 'Georgia, serif', fontWeight: 'bold' }}>
               {userData.name || userEmail}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               {userEmail}
             </Typography>
+
+            <Box mt={1}>
+              <Chip label={userData.skillLevel || 'Skill Level N/A'} color="primary" size="small" sx={{ mr: 1 }} />
+              <Chip label={userData.availability || 'Availability N/A'} color="secondary" size="small" />
+            </Box>
+
             <Typography variant="body2" sx={{ mt: 1 }}>
               {reviews.length} Reviews • Avg. Rating:
             </Typography>
             <Rating value={averageRating} precision={0.5} readOnly />
+
+            {userData.joinedAt && (
+              <Typography variant="caption" display="block" mt={1}>
+                Member since {dayjs(userData.joinedAt.toDate()).format('MMM YYYY')}
+              </Typography>
+            )}
+
+            {!userData.online && userData.lastSeen && (
+              <Typography variant="caption" color="text.secondary">
+                Last seen {dayjs(userData.lastSeen.toDate()).fromNow()}
+              </Typography>
+            )}
           </Box>
 
           <Divider sx={{ my: 3 }} />
@@ -135,6 +180,24 @@ export default function Profile() {
           )}
         </Paper>
 
+        {skills.length > 0 && (
+          <Box mt={6}>
+            <Typography variant="h6" textAlign="center">Recent Skills</Typography>
+            <Grid container spacing={2} mt={1}>
+              {skills.slice(0, 3).map((s, i) => (
+                <Grid item xs={12} key={i}>
+                  <Card sx={{ backgroundColor: '#FFF6E9' }}>
+                    <CardContent>
+                      <Typography><strong>Offers:</strong> {s.offered}</Typography>
+                      <Typography><strong>Wants:</strong> {s.requested}</Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
+        )}
+
         {reviews.length > 0 && (
           <Box mt={6}>
             <Typography variant="h6" textAlign="center">Review Summary</Typography>
@@ -144,7 +207,7 @@ export default function Profile() {
                 <BarChart data={ratingCounts}>
                   <XAxis dataKey="name" />
                   <YAxis allowDecimals={false} />
-                  <Tooltip />
+                  <ReTooltip />
                   <Bar dataKey="count" fill="#023020" />
                 </BarChart>
               </ResponsiveContainer>
