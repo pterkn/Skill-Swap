@@ -1,21 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Container,
-  Typography,
-  Box,
-  Rating,
-  TextField,
-  Button,
-  Card,
-  CardContent,
-  Divider,
-  Avatar,
-  Fade,
-  LinearProgress,
-  MenuItem,
-  Select,
-  InputLabel,
-  FormControl
+  Container, Typography, Box, Rating, TextField, Button, Card, CardContent, Divider,
+  Avatar, Fade, LinearProgress, MenuItem, Select, InputLabel, FormControl
 } from '@mui/material';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -49,13 +35,13 @@ export default function Review() {
     const fetchAll = async () => {
       if (!userEmail || !targetEmail) return;
 
-      const checkDuplicate = query(
+      const duplicateQuery = query(
         collection(db, 'reviews'),
         where('reviewer', '==', userEmail),
         where('reviewee', '==', targetEmail)
       );
-      const existing = await getDocs(checkDuplicate);
-      if (!existing.empty) setHasReviewed(true);
+      const duplicateSnap = await getDocs(duplicateQuery);
+      setHasReviewed(!duplicateSnap.empty);
 
       const reviewQuery = query(
         collection(db, 'reviews'),
@@ -64,16 +50,14 @@ export default function Review() {
       );
       const snap = await getDocs(reviewQuery);
 
-      const reviewsWithUsers = await Promise.all(
-        snap.docs.map(async (docSnap) => {
-          const data = docSnap.data();
-          const userDoc = await getDoc(doc(db, 'users', data.reviewer));
-          const userInfo = userDoc.exists() ? userDoc.data() : {};
-          return { ...data, reviewerInfo: userInfo };
-        })
-      );
+      const enriched = await Promise.all(snap.docs.map(async (docSnap) => {
+        const data = docSnap.data();
+        const userDoc = await getDoc(doc(db, 'users', data.reviewer));
+        const userInfo = userDoc.exists() ? userDoc.data() : {};
+        return { ...data, reviewerInfo: userInfo };
+      }));
 
-      setPastReviews(reviewsWithUsers);
+      setPastReviews(enriched);
       setLoadingReviews(false);
     };
 
@@ -97,13 +81,10 @@ export default function Review() {
         createdAt: new Date()
       });
       setSubmitted(true);
-      setToastMsg(' Review submitted!');
+      setToastMsg('✅ Review submitted!');
       setShowToast(true);
-      setTimeout(() => {
-        window.scrollTo({ top: commentRef.current?.offsetTop, behavior: 'smooth' });
-      }, 400);
-    } catch (err) {
-      setToastMsg(' Failed to submit review.');
+    } catch {
+      setToastMsg('❌ Failed to submit review.');
       setShowToast(true);
     }
   };
@@ -116,16 +97,17 @@ export default function Review() {
 
   const ratingCounts = [1, 2, 3, 4, 5].map((star) => ({
     name: `${star} ★`,
-    count: pastReviews.filter((r) => r.rating === star).length
+    count: pastReviews.filter(r => r.rating === star).length
   }));
 
   const averageRating = pastReviews.length
     ? pastReviews.reduce((sum, r) => sum + r.rating, 0) / pastReviews.length
     : 0;
 
-  const mostHelpfulReview = pastReviews.reduce((longest, current) => {
-    return current.comment.length > (longest?.comment.length || 0) ? current : longest;
-  }, null);
+  const mostHelpfulReview = pastReviews.reduce((best, current) =>
+    current.comment.length > (best?.comment.length || 0) ? current : best,
+    null
+  );
 
   if (!auth.currentUser) {
     navigate('/');
@@ -138,7 +120,7 @@ export default function Review() {
       <Container maxWidth="sm">
         <Fade in timeout={600}>
           <Box mt={4} textAlign="center">
-            <Typography variant="h4" sx={{ color: 'primary.main', fontWeight: 'bold', fontFamily: 'Georgia, serif' }}>
+            <Typography variant="h4" sx={{ fontFamily: 'Georgia, serif', fontWeight: 'bold' }}>
               Leave a Review
             </Typography>
             <Typography variant="subtitle1" mt={1}>
@@ -150,7 +132,7 @@ export default function Review() {
         {hasReviewed ? (
           <Card sx={{ mt: 4, backgroundColor: '#FEFFEC' }}>
             <CardContent>
-              <Typography>You already submitted a review for this user 🙅‍♂️</Typography>
+              <Typography>You already submitted a review for this user.</Typography>
             </CardContent>
           </Card>
         ) : submitted ? (
@@ -161,14 +143,7 @@ export default function Review() {
           </Card>
         ) : (
           <Box component="form" mt={4} onSubmit={handleSubmit}>
-            <Box mb={2}>
-              <Rating
-                value={rating}
-                onChange={(e, newVal) => setRating(newVal)}
-                size="large"
-              />
-            </Box>
-
+            <Rating value={rating} onChange={(e, v) => setRating(v)} size="large" />
             <TextField
               label="Feedback"
               multiline
@@ -180,9 +155,9 @@ export default function Review() {
               required
               helperText={`${comment.length}/300`}
               inputProps={{ maxLength: 300 }}
+              sx={{ mt: 2 }}
             />
-
-            <Button variant="contained" type="submit" fullWidth sx={{ mt: 2 }}>
+            <Button type="submit" variant="contained" fullWidth sx={{ mt: 2 }}>
               Submit Review
             </Button>
           </Box>
@@ -190,7 +165,7 @@ export default function Review() {
 
         {loadingReviews ? (
           <LinearProgress sx={{ mt: 6 }} />
-        ) : pastReviews.length > 0 ? (
+        ) : pastReviews.length ? (
           <>
             <Box mt={6} textAlign="center">
               <Typography variant="h6">Average Rating</Typography>
@@ -212,11 +187,7 @@ export default function Review() {
 
             <FormControl fullWidth sx={{ mt: 4 }}>
               <InputLabel>Sort Reviews</InputLabel>
-              <Select
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value)}
-                label="Sort Reviews"
-              >
+              <Select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} label="Sort Reviews">
                 <MenuItem value="newest">Newest</MenuItem>
                 <MenuItem value="highest">Highest Rated</MenuItem>
                 <MenuItem value="lowest">Lowest Rated</MenuItem>
