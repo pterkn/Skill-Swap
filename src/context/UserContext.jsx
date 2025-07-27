@@ -3,13 +3,13 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, onSnapshot, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { ref, onDisconnect, set } from 'firebase/database';
 
-import { auth, db, rtdb } from '../firebase'; // ensure `rtdb` is initialized in your firebase.js
+import { auth, db, dbRealtime } from '../firebase'; // FIXED
 
 const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
   const [authUser, setAuthUser] = useState(null);
-  const [userData, setUserData] = useState(null); // from Firestore 'users' collection
+  const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,22 +19,22 @@ export const UserProvider = ({ children }) => {
         setAuthUser(user);
         const userDocRef = doc(db, 'users', user.email);
 
-        // Firestore listener for user data
         const unsubscribeSnap = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
             setUserData(docSnap.data());
           }
         });
 
-        // Optionally set online status in Realtime Database
-        const statusRef = ref(rtdb, `status/${user.email.replace('.', '_')}`);
+        // ✅ Use Realtime DB to mark user online
+        const safeEmail = user.email.replace(/\./g, '_');
+        const statusRef = ref(dbRealtime, `status/${safeEmail}`);
+
         set(statusRef, { online: true });
         onDisconnect(statusRef).set({
           online: false,
           lastSeen: serverTimestamp(),
         });
 
-        // Update Firestore "last seen"
         await updateDoc(userDocRef, {
           lastSeen: serverTimestamp(),
         });
