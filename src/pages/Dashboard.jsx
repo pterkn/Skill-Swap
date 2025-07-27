@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Container, Box, TextField, Button, Typography, Grid, Card, CardContent, CardActions,
   Divider, Tabs, Tab, MenuItem, Select, InputLabel, FormControl, CircularProgress,
-  IconButton, Pagination, Chip, Avatar, Popover, Tooltip
+  IconButton, Pagination, Chip, Avatar, Tooltip
 } from '@mui/material';
 import BuildIcon from '@mui/icons-material/Build';
 import CodeIcon from '@mui/icons-material/Code';
@@ -39,8 +38,6 @@ export default function Dashboard() {
   const [page, setPage] = useState(1);
   const [editingSkill, setEditingSkill] = useState(null);
   const [users, setUsers] = useState({});
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [hoveredUser, setHoveredUser] = useState(null);
 
   const perPage = 6;
   const navigate = useNavigate();
@@ -115,21 +112,17 @@ export default function Dashboard() {
     return sortedSkills.slice(start, start + perPage);
   }, [sortedSkills, page]);
 
-  const handlePopoverOpen = (event, email) => {
-    setAnchorEl(event.currentTarget);
-    setHoveredUser(users[email]);
-  };
-
-  const handlePopoverClose = () => {
-    setAnchorEl(null);
-    setHoveredUser(null);
-  };
-
   const getSkillIcon = (category) => {
     if (category === 'code') return <CodeIcon fontSize="small" sx={{ mr: 1 }} />;
     if (category === 'design') return <DesignServicesIcon fontSize="small" sx={{ mr: 1 }} />;
     if (category === 'teaching') return <SchoolIcon fontSize="small" sx={{ mr: 1 }} />;
     return <BuildIcon fontSize="small" sx={{ mr: 1 }} />;
+  };
+
+  const handleDelete = async (id) => {
+    await deleteDoc(doc(db, 'skills', id));
+    setToastMsg('🗑️ Skill deleted');
+    setShowToast(true);
   };
 
   return (
@@ -183,17 +176,13 @@ export default function Dashboard() {
                 const lastSeen = profile.lastSeen ? dayjs(profile.lastSeen.toDate()).fromNow() : 'unknown';
                 return (
                   <Grid item xs={12} sm={6} md={4} key={i}>
-                    <motion.div whileHover={{ scale: 1.03 }}>
+                    <motion.div whileHover={{ scale: 1.03 }} onClick={() => navigate(`/profile/${skill.email}`)} style={{ cursor: 'pointer' }}>
                       <Card>
                         <CardContent>
                           <Box display="flex" alignItems="center" gap={1}>
                             <Avatar src={`https://ui-avatars.com/api/?name=${profile.name || skill.email}`} />
-                            <Box onMouseEnter={(e) => handlePopoverOpen(e, skill.email)} onMouseLeave={handlePopoverClose}>
-                              <Typography
-                                variant="subtitle2"
-                                sx={{ cursor: 'pointer' }}
-                                onClick={() => navigate(`/profile/${skill.email}`)}
-                              >
+                            <Box>
+                              <Typography variant="subtitle2">
                                 <strong>{profile.name || skill.email}</strong>
                                 <Tooltip title={online ? 'Online' : `Last seen: ${lastSeen}`}>
                                   <Chip
@@ -204,14 +193,6 @@ export default function Dashboard() {
                                   />
                                 </Tooltip>
                               </Typography>
-                              <Popover open={Boolean(anchorEl)} anchorEl={anchorEl} onClose={handlePopoverClose}>
-                                <Box p={2} maxWidth={250}>
-                                  <Typography fontWeight="bold">{profile.name}</Typography>
-                                  <Typography variant="body2">📍 {profile.location}</Typography>
-                                  <Typography variant="body2">💬 {profile.bio}</Typography>
-                                  <Typography variant="body2">🌟 Avg Rating: {profile.rating?.toFixed(1) || 'N/A'}</Typography>
-                                </Box>
-                              </Popover>
                             </Box>
                           </Box>
                           <Typography><strong>Offers:</strong> {getSkillIcon(skill.category)} {skill.offered}</Typography>
