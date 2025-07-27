@@ -1,31 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Container,
-  Typography,
-  Box,
-  Avatar,
-  TextField,
-  Button,
-  Grid,
-  Divider,
-  Rating,
-  Card,
-  CardContent,
-  Paper,
-  Chip,
-  Tooltip
+  Container, Typography, Box, Avatar, TextField, Button, Grid, Divider, Rating,
+  Card, CardContent, Paper, Chip
 } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import { auth, db } from '../firebase';
 import {
-  doc,
-  getDoc,
-  updateDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-  orderBy
+  doc, getDoc, updateDoc, collection, query, where, getDocs, orderBy
 } from 'firebase/firestore';
 import Header from '../components/Header';
 import { BarChart, Bar, XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer } from 'recharts';
@@ -34,44 +15,43 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 dayjs.extend(relativeTime);
 
 export default function Profile() {
-  const { email } = useParams();
-  const isCurrentUser = auth.currentUser?.email === email;
-  const userEmail = email || auth.currentUser?.email;
+  const { email } = useParams(); // ✅ Get email from route param
+  const userEmail = email || auth.currentUser?.email; // ✅ Fallback to current user if not viewing others
+  const isOwnProfile = userEmail === auth.currentUser?.email;
 
-  const [userData, setUserData] = useState({ name: '', bio: '', availability: '', skillLevel: '', online: false, lastSeen: null, joinedAt: null });
+  const [userData, setUserData] = useState({});
   const [editMode, setEditMode] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [skills, setSkills] = useState([]);
 
   useEffect(() => {
+    if (!userEmail) return;
+
     const fetchProfile = async () => {
-      const docRef = doc(db, 'users', userEmail);
-      const snap = await getDoc(docRef);
-      if (snap.exists()) setUserData(snap.data());
+      try {
+        const docRef = doc(db, 'users', userEmail);
+        const snap = await getDoc(docRef);
+        if (snap.exists()) setUserData(snap.data());
+      } catch (error) {
+        console.error('Error loading profile:', error);
+      }
     };
 
     const fetchReviews = async () => {
-      const q = query(
-        collection(db, 'reviews'),
-        where('reviewee', '==', userEmail),
-        orderBy('createdAt', 'desc')
-      );
+      const q = query(collection(db, 'reviews'), where('reviewee', '==', userEmail), orderBy('createdAt', 'desc'));
       const snap = await getDocs(q);
-      const data = snap.docs.map(doc => doc.data());
-      setReviews(data);
+      setReviews(snap.docs.map(doc => doc.data()));
     };
 
-    const fetchUserSkills = async () => {
+    const fetchSkills = async () => {
       const q = query(collection(db, 'skills'), where('email', '==', userEmail), orderBy('createdAt', 'desc'));
       const snap = await getDocs(q);
       setSkills(snap.docs.map(doc => doc.data()));
     };
 
-    if (userEmail) {
-      fetchProfile();
-      fetchReviews();
-      fetchUserSkills();
-    }
+    fetchProfile();
+    fetchReviews();
+    fetchSkills();
   }, [userEmail]);
 
   const handleUpdate = async () => {
@@ -136,13 +116,13 @@ export default function Profile() {
             </Typography>
             <Rating value={averageRating} precision={0.5} readOnly />
 
-            {userData.joinedAt && (
+            {userData.joinedAt?.toDate && (
               <Typography variant="caption" display="block" mt={1}>
                 Member since {dayjs(userData.joinedAt.toDate()).format('MMM YYYY')}
               </Typography>
             )}
 
-            {!userData.online && userData.lastSeen && (
+            {!userData.online && userData.lastSeen?.toDate && (
               <Typography variant="caption" color="text.secondary">
                 Last seen {dayjs(userData.lastSeen.toDate()).fromNow()}
               </Typography>
@@ -151,19 +131,19 @@ export default function Profile() {
 
           <Divider sx={{ my: 3 }} />
 
-          {isCurrentUser && editMode ? (
+          {isOwnProfile && editMode ? (
             <>
               <TextField
                 fullWidth
                 label="Name"
-                value={userData.name}
+                value={userData.name || ''}
                 onChange={(e) => setUserData({ ...userData, name: e.target.value })}
                 margin="normal"
               />
               <TextField
                 fullWidth
                 label="Bio"
-                value={userData.bio}
+                value={userData.bio || ''}
                 onChange={(e) => setUserData({ ...userData, bio: e.target.value })}
                 multiline
                 rows={4}
@@ -179,7 +159,7 @@ export default function Profile() {
               <Typography>{userData.name || 'Not set'}</Typography>
               <Typography variant="h6" mt={2}>Bio</Typography>
               <Typography>{userData.bio || 'No bio provided.'}</Typography>
-              {isCurrentUser && (
+              {isOwnProfile && (
                 <Button onClick={() => setEditMode(true)} fullWidth sx={{ mt: 2 }}>
                   Edit Profile
                 </Button>
@@ -209,7 +189,6 @@ export default function Profile() {
         {reviews.length > 0 && (
           <Box mt={6}>
             <Typography variant="h6" textAlign="center">Review Summary</Typography>
-
             <Box mt={3}>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={ratingCounts}>

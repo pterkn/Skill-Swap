@@ -15,7 +15,7 @@ import { Rating } from '@mui/material';
 import { motion } from 'framer-motion';
 import { auth, db } from '../firebase';
 import {
-  collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, getDoc, where
+  collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, getDoc
 } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
@@ -121,7 +121,7 @@ export default function Dashboard() {
 
   const handleDelete = async (id) => {
     await deleteDoc(doc(db, 'skills', id));
-    setToastMsg('🗑️ Skill deleted');
+    setToastMsg('Skill deleted');
     setShowToast(true);
   };
 
@@ -176,14 +176,18 @@ export default function Dashboard() {
                 const lastSeen = profile.lastSeen ? dayjs(profile.lastSeen.toDate()).fromNow() : 'unknown';
                 return (
                   <Grid item xs={12} sm={6} md={4} key={i}>
-                    <motion.div whileHover={{ scale: 1.03 }} onClick={() => navigate(`/profile/${skill.email}`)} style={{ cursor: 'pointer' }}>
-                      <Card>
+                    <motion.div whileHover={{ scale: 1.03 }}>
+                      <Card onClick={() => navigate(`/profile/${skill.email}`)} sx={{ cursor: 'pointer' }}>
                         <CardContent>
                           <Box display="flex" alignItems="center" gap={1}>
                             <Avatar src={`https://ui-avatars.com/api/?name=${profile.name || skill.email}`} />
                             <Box>
                               <Typography variant="subtitle2">
-                                <strong>{profile.name || skill.email}</strong>
+                                {profile.name
+                                  ? profile.name
+                                  : skill.email === userEmail
+                                  ? 'You'
+                                  : skill.email.split('@')[0]}
                                 <Tooltip title={online ? 'Online' : `Last seen: ${lastSeen}`}>
                                   <Chip
                                     size="small"
