@@ -15,6 +15,7 @@ import {
   Chip,
   Tooltip
 } from '@mui/material';
+import { useParams } from 'react-router-dom';
 import { auth, db } from '../firebase';
 import {
   doc,
@@ -33,11 +34,14 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 dayjs.extend(relativeTime);
 
 export default function Profile() {
+  const { email } = useParams();
+  const isCurrentUser = auth.currentUser?.email === email;
+  const userEmail = email || auth.currentUser?.email;
+
   const [userData, setUserData] = useState({ name: '', bio: '', availability: '', skillLevel: '', online: false, lastSeen: null, joinedAt: null });
   const [editMode, setEditMode] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [skills, setSkills] = useState([]);
-  const userEmail = auth.currentUser?.email;
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -63,9 +67,11 @@ export default function Profile() {
       setSkills(snap.docs.map(doc => doc.data()));
     };
 
-    fetchProfile();
-    fetchReviews();
-    fetchUserSkills();
+    if (userEmail) {
+      fetchProfile();
+      fetchReviews();
+      fetchUserSkills();
+    }
   }, [userEmail]);
 
   const handleUpdate = async () => {
@@ -145,7 +151,7 @@ export default function Profile() {
 
           <Divider sx={{ my: 3 }} />
 
-          {editMode ? (
+          {isCurrentUser && editMode ? (
             <>
               <TextField
                 fullWidth
@@ -173,9 +179,11 @@ export default function Profile() {
               <Typography>{userData.name || 'Not set'}</Typography>
               <Typography variant="h6" mt={2}>Bio</Typography>
               <Typography>{userData.bio || 'No bio provided.'}</Typography>
-              <Button onClick={() => setEditMode(true)} fullWidth sx={{ mt: 2 }}>
-                Edit Profile
-              </Button>
+              {isCurrentUser && (
+                <Button onClick={() => setEditMode(true)} fullWidth sx={{ mt: 2 }}>
+                  Edit Profile
+                </Button>
+              )}
             </>
           )}
         </Paper>
