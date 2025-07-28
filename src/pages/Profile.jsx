@@ -1,40 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Container,
-  Typography,
-  Box,
-  Avatar,
-  TextField,
-  Button,
-  Grid,
-  Divider,
-  Rating,
-  Card,
-  CardContent,
-  Paper,
-  Chip,
-  CircularProgress
+  Container, Typography, Box, Avatar, TextField, Button, Grid, Divider,
+  Rating, Card, CardContent, Paper, Chip, CircularProgress
 } from '@mui/material';
 import { auth, db } from '../firebase';
 import {
-  doc,
-  getDoc,
-  updateDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-  orderBy
+  doc, getDoc, updateDoc, collection, query, where, getDocs, orderBy
 } from 'firebase/firestore';
 import Header from '../components/Header';
-import { BarChart, Bar, XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer } from 'recharts';
-import dayjs from 'dayjs';
-import relativeTime from 'dayjs/plugin/relativeTime';
 import { useParams, useNavigate } from 'react-router-dom';
-
 import { onAuthStateChanged } from 'firebase/auth';
-
-dayjs.extend(relativeTime);
 
 export default function Profile() {
   const { email: userParam } = useParams();
@@ -78,7 +53,8 @@ export default function Profile() {
         where('email', '==', userEmail),
         orderBy('createdAt', 'desc')
       ));
-      setSkills(skillSnap.docs.map(doc => doc.data()));
+      const fetchedSkills = skillSnap.docs.map(doc => doc.data());
+      setSkills(fetchedSkills);
     };
 
     fetchAll();
@@ -93,11 +69,6 @@ export default function Profile() {
   const averageRating = reviews.length
     ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
     : 0;
-
-  const ratingCounts = [1, 2, 3, 4, 5].map((star) => ({
-    name: `${star}★`,
-    count: reviews.filter((r) => r.rating === star).length
-  }));
 
   const mostHelpfulReview = reviews.reduce((longest, current) =>
     current.comment.length > (longest?.comment.length || 0) ? current : longest,
@@ -119,25 +90,10 @@ export default function Profile() {
       <Container maxWidth="sm" sx={{ py: 4 }}>
         <Paper elevation={3} sx={{ p: 3, backgroundColor: '#FEFFEC' }}>
           <Box textAlign="center">
-            <Box sx={{ position: 'relative', display: 'inline-block' }}>
-              <Avatar
-                src={`https://ui-avatars.com/api/?name=${userEmail}&background=023020&color=fff`}
-                sx={{ width: 80, height: 80, mx: 'auto', mb: 2 }}
-              />
-              <Box
-                sx={{
-                  position: 'absolute',
-                  bottom: 8,
-                  right: 10,
-                  width: 14,
-                  height: 14,
-                  borderRadius: '50%',
-                  backgroundColor: userData.online ? 'green' : 'gray',
-                  border: '2px solid white'
-                }}
-              />
-            </Box>
-
+            <Avatar
+              src={`https://ui-avatars.com/api/?name=${userEmail}&background=023020&color=fff`}
+              sx={{ width: 80, height: 80, mx: 'auto', mb: 2 }}
+            />
             <Typography variant="h5" sx={{ fontFamily: 'Georgia, serif', fontWeight: 'bold' }}>
               {userData.name || userEmail}
             </Typography>
@@ -155,16 +111,15 @@ export default function Profile() {
             </Typography>
             <Rating value={averageRating} precision={0.5} readOnly />
 
-            {userData?.joinedAt?.toDate && (
-              <Typography variant="caption" display="block" mt={1}>
-                Member since {dayjs(userData.joinedAt.toDate()).format('MMM YYYY')}
-              </Typography>
-            )}
-
-            {!userData.online && userData?.lastSeen?.toDate && (
-              <Typography variant="caption" color="text.secondary">
-                Last seen {dayjs(userData.lastSeen.toDate()).fromNow()}
-              </Typography>
+            {isOwnProfile ? (
+              <Button onClick={() => setEditMode(true)} fullWidth sx={{ mt: 2 }}>
+                Edit Profile
+              </Button>
+            ) : (
+              <Box display="flex" gap={2} mt={2}>
+                <Button fullWidth variant="outlined" onClick={() => navigate(`/chat?partner=${userEmail}`)}>Chat</Button>
+                <Button fullWidth variant="contained" onClick={() => navigate(`/review?user=${userEmail}`)}>Rate</Button>
+              </Box>
             )}
           </Box>
 
@@ -198,16 +153,6 @@ export default function Profile() {
               <Typography>{userData.name || 'Not set'}</Typography>
               <Typography variant="h6" mt={2}>Bio</Typography>
               <Typography>{userData.bio || 'No bio provided.'}</Typography>
-              {isOwnProfile ? (
-                <Button onClick={() => setEditMode(true)} fullWidth sx={{ mt: 2 }}>
-                  Edit Profile
-                </Button>
-              ) : (
-                <Box display="flex" gap={2} mt={2}>
-                  <Button fullWidth variant="outlined" onClick={() => navigate(`/chat?partner=${userEmail}`)}>Chat</Button>
-                  <Button fullWidth variant="contained" onClick={() => navigate(`/review?user=${userEmail}`)}>Rate</Button>
-                </Box>
-              )}
             </>
           )}
         </Paper>
@@ -236,20 +181,10 @@ export default function Profile() {
 
         {reviews.length > 0 && (
           <Box mt={6}>
-            <Typography variant="h6" textAlign="center">Review Summary</Typography>
-            <Box mt={3}>
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={ratingCounts}>
-                  <XAxis dataKey="name" />
-                  <YAxis allowDecimals={false} />
-                  <ReTooltip />
-                  <Bar dataKey="count" fill="#023020" />
-                </BarChart>
-              </ResponsiveContainer>
-            </Box>
+            <Typography variant="h6" textAlign="center">Reviews</Typography>
 
             {mostHelpfulReview && (
-              <Box mt={4}>
+              <Box mt={2}>
                 <Typography variant="subtitle1">Most Helpful Review</Typography>
                 <Card sx={{ backgroundColor: '#FEFFEC', mt: 1 }}>
                   <CardContent>

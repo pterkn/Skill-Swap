@@ -1,37 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Container,
-  Box,
-  TextField,
-  Typography,
-  IconButton,
-  CircularProgress,
-  Avatar,
-  Paper,
-  InputAdornment
+  Container, Box, TextField, Typography, IconButton,
+  CircularProgress, Paper, InputAdornment
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import ImageIcon from '@mui/icons-material/Image';
 import { useLocation } from 'react-router-dom';
 import { auth, db, dbRealtime, storage } from '../firebase';
+import { ref, push, onChildAdded, set } from 'firebase/database';
 import {
-  ref,
-  push,
-  onChildAdded,
-  serverTimestamp,
-  update,
-  set,
-  onValue
-} from 'firebase/database';
-import {
-  uploadBytes,
-  getDownloadURL,
-  ref as storageRef
+  uploadBytes, getDownloadURL, ref as storageRef
 } from 'firebase/storage';
-import {
-  getDoc,
-  doc as docFirestore
-} from 'firebase/firestore';
+import { getDoc, doc as docFirestore } from 'firebase/firestore';
 import Header from '../components/Header';
 import Toast from '../components/Toast';
 
@@ -45,51 +25,40 @@ export default function Chat() {
   const [loading, setLoading] = useState(true);
   const [toastMsg, setToastMsg] = useState('');
   const [showToast, setShowToast] = useState(false);
-  const [typing, setTyping] = useState(false);
   const [file, setFile] = useState(null);
-  const [online, setOnline] = useState(false);
-  const [lastSeen, setLastSeen] = useState(null);
   const [partnerProfile, setPartnerProfile] = useState({});
 
-  const chatRef = useRef(null);
   const bottomRef = useRef(null);
+  const addedKeys = useRef(new Set());
+
   const currentUser = auth.currentUser?.email || '';
   const chatId = [currentUser, partner].sort().join('_').replace(/\./g, '_');
 
+  // 🔄 Listen for incoming messages (deduplicated)
   useEffect(() => {
     const msgRef = ref(dbRealtime, `chats/${chatId}`);
-    const typingRef = ref(dbRealtime, `typing/${chatId}/${partner.replace(/\./g, '_')}`);
-    const statusRef = ref(dbRealtime, `status/${partner.replace(/\./g, '_')}`);
-
     onChildAdded(msgRef, (snap) => {
-      setMessages((prev) => [...prev, snap.val()]);
-      setLoading(false);
+      const key = snap.key;
+      if (!addedKeys.current.has(key)) {
+        setMessages(prev => [...prev, snap.val()]);
+        addedKeys.current.add(key);
+        setLoading(false);
+      }
     });
+  }, [chatId]);
 
-    onChildAdded(typingRef, (snap) => {
-      if (snap.key === 'typing') setTyping(true);
-      setTimeout(() => setTyping(false), 2000);
-    });
-
-    onValue(statusRef, (snap) => {
-      const data = snap.val();
-      setOnline(data?.online);
-      setLastSeen(data?.lastSeen);
-    });
-  }, [chatId, partner]);
-
+  // 🔻 Scroll to bottom on new message
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // ✅ Reset unread count on mount
   useEffect(() => {
-    const markSeen = () => {
-      const seenRef = ref(dbRealtime, `chatMetadata/${chatId}/unreadCount/${currentUser.replace(/\./g, '_')}`);
-      set(seenRef, 0);
-    };
-    markSeen();
+    const seenRef = ref(dbRealtime, `chatMetadata/${chatId}/unreadCount/${currentUser.replace(/\./g, '_')}`);
+    set(seenRef, 0);
   }, [chatId]);
 
+  // 👤 Load partner profile
   useEffect(() => {
     const fetchProfile = async () => {
       const docSnap = await getDoc(docFirestore(db, 'users', partner));
@@ -100,41 +69,38 @@ export default function Chat() {
 
   const sendMessage = async () => {
     if (!input.trim() && !file) return;
+
+    const timestamp = Date.now();
     const msgRef = ref(dbRealtime, `chats/${chatId}`);
 
-    let message = {
+    const message = {
       sender: currentUser,
       text: input,
-      timestamp: Date.now()
+      timestamp,
     };
 
     if (file) {
-      const filePath = `uploads/${chatId}/${Date.now()}-${file.name}`;
-      const fileRef = storageRef(storage, filePath);
+      const path = `uploads/${chatId}/${timestamp}-${file.name}`;
+      const fileRef = storageRef(storage, path);
       const snapshot = await uploadBytes(fileRef, file);
-      const fileURL = await getDownloadURL(snapshot.ref);
-      message.image = fileURL;
+      const url = await getDownloadURL(snapshot.ref);
+      message.image = url;
       setFile(null);
     }
 
-    push(msgRef, message);
+    await push(msgRef, message);
 
-    await set(ref(dbRealtime, `chatMetadata/${chatId}`), {
-      lastMessageAt: Date.now(),
+    const metadataRef = ref(dbRealtime, `chatMetadata/${chatId}`);
+    await set(metadataRef, {
+      lastMessageAt: timestamp,
       lastMessageText: input || '📷 Image',
       lastSender: currentUser,
       unreadCount: {
-        [partner.replace(/\./g, '_')]: (prev => prev + 1) || 1
+        [partner.replace(/\./g, '_')]: 1
       }
     });
 
     setInput('');
-  };
-
-  const handleTyping = () => {
-    const typingRef = ref(dbRealtime, `typing/${chatId}/${currentUser.replace(/\./g, '_')}`);
-    set(typingRef, { typing: true });
-    setTimeout(() => set(typingRef, { typing: false }), 2000);
   };
 
   const formatTimestamp = (ts) => {
@@ -150,9 +116,6 @@ export default function Chat() {
           <Typography variant="h5" sx={{ fontFamily: 'Georgia, serif', color: 'primary.main' }}>
             Chat with <strong>{partnerProfile.name || partner}</strong>
           </Typography>
-          <Typography variant="caption">
-            {online ? '🟢 Online' : `Last seen: ${formatTimestamp(lastSeen)}`}
-          </Typography>
           {partnerProfile.bio && (
             <Typography variant="body2" mt={1} color="text.secondary">
               {partnerProfile.bio}
@@ -160,7 +123,13 @@ export default function Chat() {
           )}
         </Box>
 
-        <Paper sx={{ mt: 3, p: 2, backgroundColor: '#FEFFEC', minHeight: '400px', maxHeight: '500px', overflowY: 'auto' }}>
+        <Paper sx={{
+          mt: 3, p: 2,
+          backgroundColor: '#FEFFEC',
+          minHeight: '400px',
+          maxHeight: '500px',
+          overflowY: 'auto'
+        }}>
           {loading ? (
             <Box display="flex" justifyContent="center">
               <CircularProgress />
@@ -169,7 +138,10 @@ export default function Chat() {
             messages.map((msg, i) => (
               <Box
                 key={i}
-                sx={{ textAlign: msg.sender === currentUser ? 'right' : 'left', my: 1 }}
+                sx={{
+                  textAlign: msg.sender === currentUser ? 'right' : 'left',
+                  my: 1
+                }}
               >
                 <Typography
                   variant="body2"
@@ -193,27 +165,26 @@ export default function Chat() {
               </Box>
             ))
           )}
-          {typing && (
-            <Box display="flex" gap={1} mt={1} ml={1}><Box className="dot" /><Box className="dot" /><Box className="dot" /></Box>
-          )}
           <div ref={bottomRef} />
         </Paper>
 
         {file && (
-          <Box mt={2}><img src={URL.createObjectURL(file)} alt="preview" style={{ maxHeight: 100, borderRadius: 8 }} /></Box>
+          <Box mt={2}>
+            <img src={URL.createObjectURL(file)} alt="preview" style={{ maxHeight: 100, borderRadius: 8 }} />
+          </Box>
         )}
 
         <Box display="flex" alignItems="center" mt={2} gap={1}>
           <TextField
             value={input}
-            onChange={(e) => {
-              setInput(e.target.value);
-              handleTyping();
-            }}
+            onChange={(e) => setInput(e.target.value)}
             fullWidth
             placeholder="Type a message..."
             onKeyPress={(e) => {
-              if (e.key === 'Enter') sendMessage();
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                sendMessage();
+              }
             }}
             InputProps={{
               endAdornment: (
@@ -225,7 +196,6 @@ export default function Chat() {
               )
             }}
           />
-
           <label htmlFor="file-input">
             <input
               id="file-input"

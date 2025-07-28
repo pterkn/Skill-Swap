@@ -1,16 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Container, Box, TextField, Button, Typography, Grid, Card, CardContent, CardActions,
-  Divider, Tabs, Tab, MenuItem, Select, InputLabel, FormControl, CircularProgress,
-  IconButton, Pagination, Chip, Avatar, Tooltip
+  Divider, Tabs, Tab, FormControl, CircularProgress,
+  IconButton, Pagination, Chip, Avatar, Tooltip, InputLabel, Select, MenuItem
 } from '@mui/material';
-import BuildIcon from '@mui/icons-material/Build';
-import CodeIcon from '@mui/icons-material/Code';
-import DesignServicesIcon from '@mui/icons-material/DesignServices';
-import SchoolIcon from '@mui/icons-material/School';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import StarIcon from '@mui/icons-material/Star';
 import { Rating } from '@mui/material';
 import { motion } from 'framer-motion';
 import { auth, db } from '../firebase';
@@ -20,17 +15,14 @@ import {
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import Toast from '../components/Toast';
-import dayjs from 'dayjs';
-import relativeTime from 'dayjs/plugin/relativeTime';
 import { onAuthStateChanged } from 'firebase/auth';
-
-dayjs.extend(relativeTime);
 
 export default function Dashboard() {
   const [skills, setSkills] = useState([]);
   const [offered, setOffered] = useState('');
   const [requested, setRequested] = useState('');
-  const [category, setCategory] = useState('other');
+  const [availability, setAvailability] = useState('Anytime');
+  const [skillLevel, setSkillLevel] = useState('Intermediate');
   const [search, setSearch] = useState('');
   const [toastMsg, setToastMsg] = useState('');
   const [showToast, setShowToast] = useState(false);
@@ -88,21 +80,25 @@ export default function Dashboard() {
 
     try {
       if (editingSkill) {
-        await updateDoc(doc(db, 'skills', editingSkill), { offered, requested, category });
+        await updateDoc(doc(db, 'skills', editingSkill), {
+          offered, requested, availability, skillLevel
+        });
         setToastMsg('✅ Skill updated!');
       } else {
         await addDoc(collection(db, 'skills'), {
           email: userEmail,
           offered,
           requested,
-          category,
+          availability,
+          skillLevel,
           createdAt: new Date()
         });
         setToastMsg('✅ Skill added!');
       }
       setOffered('');
       setRequested('');
-      setCategory('other');
+      setAvailability('Anytime');
+      setSkillLevel('Intermediate');
       setEditingSkill(null);
       setShowToast(true);
     } catch {
@@ -126,13 +122,6 @@ export default function Dashboard() {
     const start = (page - 1) * perPage;
     return sortedSkills.slice(start, start + perPage);
   }, [sortedSkills, page]);
-
-  const getSkillIcon = (category) => {
-    if (category === 'code') return <CodeIcon fontSize="small" sx={{ mr: 1 }} />;
-    if (category === 'design') return <DesignServicesIcon fontSize="small" sx={{ mr: 1 }} />;
-    if (category === 'teaching') return <SchoolIcon fontSize="small" sx={{ mr: 1 }} />;
-    return <BuildIcon fontSize="small" sx={{ mr: 1 }} />;
-  };
 
   const handleDelete = async (id) => {
     await deleteDoc(doc(db, 'skills', id));
@@ -161,15 +150,26 @@ export default function Dashboard() {
           <Box mb={3} display="flex" flexWrap="wrap" gap={2}>
             <TextField label="Skill You Offer" value={offered} onChange={e => setOffered(e.target.value)} required fullWidth />
             <TextField label="Skill You Want" value={requested} onChange={e => setRequested(e.target.value)} required fullWidth />
+
             <FormControl fullWidth>
-              <InputLabel>Category</InputLabel>
-              <Select value={category} onChange={e => setCategory(e.target.value)} label="Category">
-                <MenuItem value="design">Design</MenuItem>
-                <MenuItem value="code">Code</MenuItem>
-                <MenuItem value="teaching">Teaching</MenuItem>
-                <MenuItem value="other">Other</MenuItem>
+              <InputLabel>Availability</InputLabel>
+              <Select value={availability} onChange={e => setAvailability(e.target.value)} label="Availability">
+                <MenuItem value="Anytime">Anytime</MenuItem>
+                <MenuItem value="Weekdays">Weekdays</MenuItem>
+                <MenuItem value="Weekends">Weekends</MenuItem>
+                <MenuItem value="Evenings">Evenings</MenuItem>
               </Select>
             </FormControl>
+
+            <FormControl fullWidth>
+              <InputLabel>Skill Level</InputLabel>
+              <Select value={skillLevel} onChange={e => setSkillLevel(e.target.value)} label="Skill Level">
+                <MenuItem value="Beginner">Beginner</MenuItem>
+                <MenuItem value="Intermediate">Intermediate</MenuItem>
+                <MenuItem value="Expert">Expert</MenuItem>
+              </Select>
+            </FormControl>
+
             <Button type="submit" variant="contained" color="primary">{editingSkill ? 'Update' : 'Add'}</Button>
           </Box>
         </form>
@@ -196,9 +196,6 @@ export default function Dashboard() {
             <Grid container spacing={3}>
               {paginatedSkills.map((skill, i) => {
                 const profile = users[skill.email] || {};
-                const online = profile.status === 'online';
-                const lastSeen = profile.lastSeen ? dayjs(profile.lastSeen.toDate()).fromNow() : 'unknown';
-
                 return (
                   <Grid item xs={12} sm={6} md={4} key={i}>
                     <motion.div whileHover={{ scale: 1.03 }}>
@@ -209,19 +206,11 @@ export default function Dashboard() {
                             <Box>
                               <Typography variant="subtitle2">
                                 {profile.name || skill.email.split('@')[0]}
-                                <Tooltip title={online ? 'Online' : `Last seen: ${lastSeen}`}>
-                                  <Chip
-                                    size="small"
-                                    label={online ? '🟢 Online' : `🕓 ${lastSeen}`}
-                                    color={online ? 'success' : 'default'}
-                                    sx={{ ml: 1 }}
-                                  />
-                                </Tooltip>
                               </Typography>
                             </Box>
                           </Box>
-                          <Typography><strong>Offers:</strong> {getSkillIcon(skill.category)} {skill.offered}</Typography>
-                          <Typography><strong>Wants:</strong> {getSkillIcon(skill.category)} {skill.requested}</Typography>
+                          <Typography><strong>Offers:</strong> {skill.offered}</Typography>
+                          <Typography><strong>Wants:</strong> {skill.requested}</Typography>
                           <Box mt={1} display="flex" gap={1}>
                             <Chip size="small" label={skill.availability || 'Anytime'} color="primary" />
                             <Chip size="small" label={skill.skillLevel || 'Intermediate'} variant="outlined" />
@@ -231,7 +220,13 @@ export default function Dashboard() {
                         <CardActions>
                           {skill.email === userEmail ? (
                             <>
-                              <IconButton onClick={(e) => { e.stopPropagation(); setEditingSkill(skill.id); }}><EditIcon /></IconButton>
+                              <IconButton onClick={(e) => { e.stopPropagation();
+                                setEditingSkill(skill.id);
+                                setOffered(skill.offered);
+                                setRequested(skill.requested);
+                                setAvailability(skill.availability || 'Anytime');
+                                setSkillLevel(skill.skillLevel || 'Intermediate');
+                              }}><EditIcon /></IconButton>
                               <IconButton onClick={(e) => { e.stopPropagation(); handleDelete(skill.id); }}><DeleteIcon /></IconButton>
                             </>
                           ) : (
