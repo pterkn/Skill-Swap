@@ -12,7 +12,8 @@ import {
   Card,
   CardContent,
   Paper,
-  Chip
+  Chip,
+  CircularProgress
 } from '@mui/material';
 import { auth, db } from '../firebase';
 import {
@@ -31,23 +32,34 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { useParams, useNavigate } from 'react-router-dom';
 
+import { onAuthStateChanged } from 'firebase/auth';
+
 dayjs.extend(relativeTime);
 
 export default function Profile() {
   const { email: userParam } = useParams();
-  const currentEmail = auth.currentUser?.email;
   const navigate = useNavigate();
 
-  const isOwnProfile = !userParam || userParam === currentEmail;
-  const userEmail = isOwnProfile ? currentEmail : userParam;
-
+  const [authReady, setAuthReady] = useState(false);
+  const [currentEmail, setCurrentEmail] = useState('');
   const [userData, setUserData] = useState({});
   const [editMode, setEditMode] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [skills, setSkills] = useState([]);
 
   useEffect(() => {
-    if (!userEmail) return navigate('/');
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) setCurrentEmail(user.email);
+      setAuthReady(true);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const isOwnProfile = !userParam || userParam === currentEmail;
+  const userEmail = isOwnProfile ? currentEmail : userParam;
+
+  useEffect(() => {
+    if (!authReady || !userEmail) return;
 
     const fetchAll = async () => {
       const docRef = doc(db, 'users', userEmail);
@@ -70,7 +82,7 @@ export default function Profile() {
     };
 
     fetchAll();
-  }, [userEmail, navigate]);
+  }, [authReady, userEmail]);
 
   const handleUpdate = async () => {
     const docRef = doc(db, 'users', userEmail);
@@ -91,6 +103,15 @@ export default function Profile() {
     current.comment.length > (longest?.comment.length || 0) ? current : longest,
     null
   );
+
+  if (!authReady) {
+    return (
+      <Box mt={8} textAlign="center">
+        <CircularProgress />
+        <Typography variant="body2" mt={2}>Loading user...</Typography>
+      </Box>
+    );
+  }
 
   return (
     <>

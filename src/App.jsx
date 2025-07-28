@@ -11,6 +11,7 @@ import Chat from './pages/Chat';
 import Review from './pages/Review';
 import Matching from './pages/Matching';
 import NotFound from './pages/NotFound';
+
 import PrivateRoute from './components/PrivateRoute';
 import ScrollToTop from './components/ScrollToTop';
 
@@ -27,27 +28,51 @@ export default function App() {
         {/* Protected Routes */}
         <Route
           path="/dashboard"
-          element={<PrivateRoute><Dashboard /></PrivateRoute>}
+          element={
+            <PrivateRoute>
+              <Dashboard />
+            </PrivateRoute>
+          }
         />
         <Route
           path="/chat"
-          element={<PrivateRoute><Chat /></PrivateRoute>}
+          element={
+            <PrivateRoute>
+              <Chat />
+            </PrivateRoute>
+          }
         />
         <Route
           path="/profile"
-          element={<PrivateRoute><Profile /></PrivateRoute>} // Own profile
+          element={
+            <PrivateRoute>
+              <Profile />
+            </PrivateRoute>
+          }
         />
         <Route
           path="/profile/:email"
-          element={<PrivateRoute><Profile /></PrivateRoute>} // Other user profiles
+          element={
+            <PrivateRoute>
+              <Profile />
+            </PrivateRoute>
+          }
         />
         <Route
           path="/review"
-          element={<PrivateRoute><Review /></PrivateRoute>}
+          element={
+            <PrivateRoute>
+              <Review />
+            </PrivateRoute>
+          }
         />
         <Route
           path="/matching"
-          element={<PrivateRoute><Matching /></PrivateRoute>}
+          element={
+            <PrivateRoute>
+              <Matching />
+            </PrivateRoute>
+          }
         />
 
         {/* Fallback route */}

@@ -22,6 +22,8 @@ import Header from '../components/Header';
 import Toast from '../components/Toast';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import { onAuthStateChanged } from 'firebase/auth';
+
 dayjs.extend(relativeTime);
 
 export default function Dashboard() {
@@ -38,12 +40,24 @@ export default function Dashboard() {
   const [page, setPage] = useState(1);
   const [editingSkill, setEditingSkill] = useState(null);
   const [users, setUsers] = useState({});
+  const [userEmail, setUserEmail] = useState('');
+  const [authReady, setAuthReady] = useState(false);
 
   const perPage = 6;
   const navigate = useNavigate();
-  const userEmail = auth.currentUser?.email || '';
 
   useEffect(() => {
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      if (user) setUserEmail(user.email);
+      setAuthReady(true);
+    });
+
+    return () => unsubAuth();
+  }, []);
+
+  useEffect(() => {
+    if (!authReady) return;
+
     const q = query(collection(db, 'skills'), orderBy('createdAt', 'desc'));
     const unsub = onSnapshot(q, async (snap) => {
       const skillList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -60,8 +74,9 @@ export default function Dashboard() {
 
       setUsers(userProfiles);
     });
+
     return () => unsub();
-  }, []);
+  }, [authReady]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -125,6 +140,15 @@ export default function Dashboard() {
     setShowToast(true);
   };
 
+  if (!authReady) {
+    return (
+      <Box mt={8} textAlign="center">
+        <CircularProgress />
+        <Typography variant="body2" mt={2}>Loading dashboard...</Typography>
+      </Box>
+    );
+  }
+
   return (
     <>
       <Header showLogout={true} />
@@ -174,6 +198,7 @@ export default function Dashboard() {
                 const profile = users[skill.email] || {};
                 const online = profile.status === 'online';
                 const lastSeen = profile.lastSeen ? dayjs(profile.lastSeen.toDate()).fromNow() : 'unknown';
+
                 return (
                   <Grid item xs={12} sm={6} md={4} key={i}>
                     <motion.div whileHover={{ scale: 1.03 }}>
@@ -183,11 +208,7 @@ export default function Dashboard() {
                             <Avatar src={`https://ui-avatars.com/api/?name=${profile.name || skill.email}`} />
                             <Box>
                               <Typography variant="subtitle2">
-                                {profile.name
-                                  ? profile.name
-                                  : skill.email === userEmail
-                                  ? 'You'
-                                  : skill.email.split('@')[0]}
+                                {profile.name || skill.email.split('@')[0]}
                                 <Tooltip title={online ? 'Online' : `Last seen: ${lastSeen}`}>
                                   <Chip
                                     size="small"
@@ -210,13 +231,13 @@ export default function Dashboard() {
                         <CardActions>
                           {skill.email === userEmail ? (
                             <>
-                              <IconButton onClick={() => setEditingSkill(skill.id)}><EditIcon /></IconButton>
-                              <IconButton onClick={() => handleDelete(skill.id)}><DeleteIcon /></IconButton>
+                              <IconButton onClick={(e) => { e.stopPropagation(); setEditingSkill(skill.id); }}><EditIcon /></IconButton>
+                              <IconButton onClick={(e) => { e.stopPropagation(); handleDelete(skill.id); }}><DeleteIcon /></IconButton>
                             </>
                           ) : (
                             <>
-                              <Button onClick={() => navigate(`/chat?partner=${skill.email}`)}>Chat</Button>
-                              <Button onClick={() => navigate(`/review?user=${skill.email}`)}>Rate</Button>
+                              <Button onClick={(e) => { e.stopPropagation(); navigate(`/chat?partner=${skill.email}`); }}>Chat</Button>
+                              <Button onClick={(e) => { e.stopPropagation(); navigate(`/review?user=${skill.email}`); }}>Rate</Button>
                               <Rating value={profile.rating || 0} precision={0.5} readOnly size="small" />
                             </>
                           )}
