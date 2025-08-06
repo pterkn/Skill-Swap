@@ -1,262 +1,582 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useState } from "react";
 import {
-  Container, Typography, Box, Rating, TextField, Button, Card, CardContent, Divider,
-  Avatar, Fade, LinearProgress, MenuItem, Select, InputLabel, FormControl
-} from '@mui/material';
-import { useLocation, useNavigate } from 'react-router-dom';
+  Box,
+  Typography,
+  Rating,
+  TextField,
+  Button,
+  CircularProgress,
+  Divider,
+  Paper,
+  Stack,
+  Snackbar,
+  Alert,
+  Avatar,
+  Container,
+  Chip,
+  IconButton,
+  Card,
+  CardContent,
+} from "@mui/material";
+import { ArrowBack, Star, StarBorder } from "@mui/icons-material";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { db, auth } from "../firebase";
 import {
-  collection, addDoc, getDocs, query, where, orderBy, doc, getDoc
-} from 'firebase/firestore';
-import { auth, db } from '../firebase';
-import Header from '../components/Header';
-import Toast from '../components/Toast';
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer
-} from 'recharts';
+  collection,
+  query,
+  where,
+  getDocs,
+  doc,
+  setDoc,
+  orderBy,
+  serverTimestamp,
+  getDoc,
+  updateDoc,
+} from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
+import Header from "../components/Header";
 
-export default function Review() {
-  const [rating, setRating] = useState(0);
-  const [comment, setComment] = useState('');
-  const [toastMsg, setToastMsg] = useState('');
-  const [showToast, setShowToast] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [hasReviewed, setHasReviewed] = useState(false);
-  const [pastReviews, setPastReviews] = useState([]);
-  const [loadingReviews, setLoadingReviews] = useState(true);
-  const [sortOrder, setSortOrder] = useState('newest');
-  const commentRef = useRef(null);
-  const location = useLocation();
+const Review = () => {
+  const { userId } = useParams(); // This could be email or userId
   const navigate = useNavigate();
-  const searchParams = new URLSearchParams(location.search);
-  const targetEmail = searchParams.get('user');
-  const userEmail = auth.currentUser?.email;
+  const [searchParams] = useSearchParams();
+  const userParam = searchParams.get('user'); // Get user from query params
+  
+  // Handle URL decoding for email addresses and use userParam if available, otherwise use userId from params
+  const targetUser = userParam || (userId ? decodeURIComponent(userId) : null);
 
+  // Debug logging to help troubleshoot routing issues
+  console.log('Review component loaded');
+  console.log('userId from params:', userId);
+  console.log('userParam from search:', userParam);
+  console.log('targetUser:', targetUser);
+
+  const [reviews, setReviews] = useState([]);
+  const [myReview, setMyReview] = useState(null);
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [alert, setAlert] = useState(null);
+  const [reviewedUser, setReviewedUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
+
+  // Auth state listener
   useEffect(() => {
-    const fetchAll = async () => {
-      if (!userEmail || !targetEmail) return;
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      setAuthReady(true);
+    });
+    return () => unsubscribe();
+  }, []);
 
-      const duplicateQuery = query(
-        collection(db, 'reviews'),
-        where('reviewer', '==', userEmail),
-        where('reviewee', '==', targetEmail)
-      );
-      const duplicateSnap = await getDocs(duplicateQuery);
-      setHasReviewed(!duplicateSnap.empty);
-
-      const reviewQuery = query(
-        collection(db, 'reviews'),
-        where('reviewee', '==', targetEmail),
-        orderBy('createdAt', 'desc')
-      );
-      const snap = await getDocs(reviewQuery);
-
-      const enriched = await Promise.all(snap.docs.map(async (docSnap) => {
-        const data = docSnap.data();
-        const userDoc = await getDoc(doc(db, 'users', data.reviewer));
-        const userInfo = userDoc.exists() ? userDoc.data() : {};
-        return { ...data, reviewerInfo: userInfo };
-      }));
-
-      setPastReviews(enriched);
-      setLoadingReviews(false);
-    };
-
-    fetchAll();
-  }, [userEmail, targetEmail]);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!rating || !comment.trim()) {
-      setToastMsg('Please provide both rating and feedback.');
-      setShowToast(true);
-      return;
-    }
-
+  const fetchUserProfile = async () => {
+    if (!targetUser) return;
+    
     try {
-      await addDoc(collection(db, 'reviews'), {
-        reviewer: userEmail,
-        reviewee: targetEmail,
-        rating,
-        comment,
-        createdAt: new Date()
+      console.log('Fetching user profile for:', targetUser);
+      // Try to fetch user data using email (consistent with Profile.jsx)
+      const userRef = doc(db, "users", targetUser);
+      const userSnap = await getDoc(userRef);
+      
+      if (userSnap.exists()) {
+        const userData = userSnap.data();
+        setReviewedUser({
+          email: targetUser,
+          name: userData.name || targetUser.split('@')[0],
+          ...userData
+        });
+        console.log('User profile loaded successfully');
+      } else {
+        console.log('User profile not found, creating basic profile');
+        // Create basic user data if profile doesn't exist
+        setReviewedUser({
+          email: targetUser,
+          name: targetUser.split('@')[0],
+          displayName: targetUser.split('@')[0],
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+      // Still create basic user data so review page can function
+      setReviewedUser({
+        email: targetUser,
+        name: targetUser.split('@')[0],
+        displayName: targetUser.split('@')[0],
       });
-      setSubmitted(true);
-      setToastMsg('✅ Review submitted!');
-      setShowToast(true);
-    } catch {
-      setToastMsg('❌ Failed to submit review.');
-      setShowToast(true);
+      // Don't show error alert for user profile fetch failures
     }
   };
 
-  const sortedReviews = [...pastReviews].sort((a, b) => {
-    if (sortOrder === 'highest') return b.rating - a.rating;
-    if (sortOrder === 'lowest') return a.rating - b.rating;
-    return new Date(b.createdAt) - new Date(a.createdAt);
-  });
+  const fetchReviews = async () => {
+    if (!targetUser) return;
+    
+    setLoading(true);
+    try {
+      console.log('Fetching reviews for user:', targetUser);
+      
+      const reviewsRef = collection(db, "reviews");
+      const q = query(
+        reviewsRef,
+        where("reviewee", "==", targetUser), // Match Profile.jsx field name
+        orderBy("createdAt", "desc") // Match Profile.jsx field name
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const fetched = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
 
-  const ratingCounts = [1, 2, 3, 4, 5].map((star) => ({
-    name: `${star} ★`,
-    count: pastReviews.filter(r => r.rating === star).length
-  }));
+      console.log('Fetched reviews:', fetched.length);
+      setReviews(fetched);
 
-  const averageRating = pastReviews.length
-    ? pastReviews.reduce((sum, r) => sum + r.rating, 0) / pastReviews.length
-    : 0;
+      // Check if current user already reviewed
+      if (currentUser) {
+        const existing = fetched.find(
+          (rev) => rev.reviewer === currentUser.email
+        );
+        if (existing) {
+          setMyReview(existing);
+          setRating(existing.rating || 0);
+          setComment(existing.comment || "");
+          console.log('Found existing review from current user');
+        }
+      }
+    } catch (err) {
+      console.error("Detailed error fetching reviews:", err);
+      
+      // Handle specific Firestore errors
+      if (err.code === 'failed-precondition') {
+        console.log('Firestore index required - trying simple query without orderBy');
+        // Fallback: try without orderBy if index is missing
+        try {
+          const reviewsRef = collection(db, "reviews");
+          const simpleQuery = query(reviewsRef, where("reviewee", "==", targetUser));
+          const querySnapshot = await getDocs(simpleQuery);
+          const fetched = querySnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          
+          // Sort manually if no index
+          fetched.sort((a, b) => {
+            const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+            const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+            return bTime - aTime;
+          });
+          
+          setReviews(fetched);
+          console.log('Fallback query successful, fetched:', fetched.length);
+        } catch (fallbackErr) {
+          console.error("Fallback query also failed:", fallbackErr);
+          setReviews([]); // Set empty array instead of showing error
+        }
+      } else if (err.code === 'permission-denied') {
+        console.error("Permission denied - check Firestore security rules");
+        setAlert({ type: "warning", message: "Unable to load reviews. Check your permissions." });
+        setReviews([]);
+      } else {
+        console.error("Unknown error:", err);
+        // Don't show error alert, just log it and set empty reviews
+        setReviews([]);
+      }
+    }
+    setLoading(false);
+  };
 
-  const mostHelpfulReview = pastReviews.reduce((best, current) =>
-    current.comment.length > (best?.comment.length || 0) ? current : best,
-    null
-  );
+  const handleSubmit = async () => {
+    if (!currentUser) {
+      setAlert({ type: "error", message: "Please login to leave a review." });
+      return;
+    }
 
-  if (!auth.currentUser) {
-    navigate('/');
-    return null;
+    if (currentUser.email === targetUser) {
+      setAlert({ type: "error", message: "You cannot review yourself." });
+      return;
+    }
+
+    if (rating === 0) {
+      setAlert({ type: "error", message: "Please select a rating." });
+      return;
+    }
+
+    if (comment.trim().length < 10) {
+      setAlert({ type: "error", message: "Please provide a comment with at least 10 characters." });
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      // Use consistent field names with Profile.jsx
+      const reviewId = `${currentUser.email}_${targetUser}`.replace(/[.@]/g, '_');
+      const reviewRef = doc(db, "reviews", reviewId);
+      
+      const reviewData = {
+        reviewer: currentUser.email,
+        reviewee: targetUser,
+        rating: Number(rating),
+        comment: comment.trim(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      await setDoc(reviewRef, reviewData);
+
+      // Update the reviewed user's profile to trigger recalculation
+      const userRef = doc(db, "users", targetUser);
+      await updateDoc(userRef, {
+        lastReviewedAt: serverTimestamp(),
+      });
+
+      setAlert({ 
+        type: "success", 
+        message: myReview ? "Review updated successfully!" : "Review submitted successfully!" 
+      });
+      
+      setMyReview({ ...reviewData, id: reviewId });
+      
+      // Refresh reviews to show the new/updated review
+      await fetchReviews();
+
+      // Navigate back to profile with refresh trigger after a short delay
+      setTimeout(() => {
+        navigate(`/profile/${targetUser}`, { 
+          state: { refreshProfile: true },
+          replace: true 
+        });
+      }, 2000);
+
+    } catch (err) {
+      console.error("Error submitting review:", err);
+      setAlert({ type: "error", message: "Failed to submit review. Please try again." });
+    }
+
+    setSubmitting(false);
+  };
+
+  const calculateAverage = () => {
+    if (reviews.length === 0) return 0;
+    const total = reviews.reduce((acc, r) => acc + (r.rating || 0), 0);
+    return Math.round((total / reviews.length) * 10) / 10;
+  };
+
+  const getRatingDistribution = () => {
+    const distribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    reviews.forEach(review => {
+      if (review.rating >= 1 && review.rating <= 5) {
+        distribution[Math.floor(review.rating)]++;
+      }
+    });
+    return distribution;
+  };
+
+  useEffect(() => {
+    console.log('Review useEffect triggered - authReady:', authReady, 'targetUser:', targetUser, 'currentUser:', currentUser?.email);
+    
+    if (authReady && targetUser) {
+      fetchUserProfile();
+      fetchReviews();
+    }
+  }, [authReady, targetUser, currentUser]);
+
+  const averageRating = calculateAverage();
+  const ratingDistribution = getRatingDistribution();
+
+  if (!authReady || loading) {
+    return (
+      <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" minHeight="50vh">
+        <CircularProgress />
+        <Typography variant="body2" mt={2}>Loading reviews...</Typography>
+      </Box>
+    );
+  }
+
+  if (!targetUser) {
+    return (
+      <Container maxWidth="md" sx={{ py: 4, textAlign: 'center' }}>
+        <Alert severity="error">
+          <Typography variant="h6" gutterBottom>No User Specified</Typography>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Debug Info:
+            <br />• URL Params userId: {userId || 'none'}
+            <br />• Search Params user: {userParam || 'none'}
+            <br />• Current URL: {window.location.href}
+          </Typography>
+        </Alert>
+        <Button 
+          onClick={() => navigate('/')} 
+          variant="contained" 
+          sx={{ mt: 2 }}
+        >
+          Go Home
+        </Button>
+      </Container>
+    );
   }
 
   return (
     <>
-      <Header showLogout={true} />
-      <Container maxWidth="sm">
-        <Fade in timeout={600}>
-          <Box mt={4} textAlign="center">
-            <Typography variant="h4" sx={{ fontFamily: 'Georgia, serif', fontWeight: 'bold' }}>
-              Leave a Review
-            </Typography>
-            <Typography variant="subtitle1" mt={1}>
-              for <strong>{targetEmail}</strong>
-            </Typography>
-          </Box>
-        </Fade>
+      <Header showLogout />
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        {/* Back Button */}
+        <Box mb={2}>
+          <IconButton 
+            onClick={() => navigate(`/profile/${targetUser}`)}
+            sx={{ mr: 1 }}
+          >
+            <ArrowBack />
+          </IconButton>
+          <Typography variant="h4" component="span" fontWeight="bold">
+            Reviews
+          </Typography>
+        </Box>
 
-        {hasReviewed ? (
-          <Card sx={{ mt: 4, backgroundColor: '#FEFFEC' }}>
-            <CardContent>
-              <Typography>You already submitted a review for this user.</Typography>
-            </CardContent>
-          </Card>
-        ) : submitted ? (
-          <Card sx={{ mt: 4, backgroundColor: '#FEFFEC' }}>
-            <CardContent>
-              <Typography>Thank you for your feedback! 🙏</Typography>
-            </CardContent>
-          </Card>
-        ) : (
-          <Box component="form" mt={4} onSubmit={handleSubmit}>
-            <Rating value={rating} onChange={(e, v) => setRating(v)} size="large" />
+        {/* User Header */}
+        {reviewedUser && (
+          <Paper elevation={2} sx={{ p: 3, mb: 3, backgroundColor: '#FEFFEC' }}>
+            <Stack direction="row" alignItems="center" spacing={3}>
+              <Avatar
+                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(reviewedUser.name || reviewedUser.email)}&background=023020&color=fff&size=128`}
+                alt={reviewedUser.name || "User"}
+                sx={{ width: 80, height: 80 }}
+              />
+              <Box flex={1}>
+                <Typography variant="h5" fontWeight={600} gutterBottom>
+                  {reviewedUser.name || reviewedUser.email}
+                </Typography>
+                <Stack direction="row" alignItems="center" spacing={2} mb={1}>
+                  <Rating value={averageRating} precision={0.1} readOnly />
+                  <Typography variant="h6" color="text.secondary">
+                    {averageRating.toFixed(1)} / 5
+                  </Typography>
+                  <Chip 
+                    label={`${reviews.length} review${reviews.length !== 1 ? 's' : ''}`} 
+                    color="primary" 
+                    size="small" 
+                  />
+                </Stack>
+                {reviewedUser.bio && (
+                  <Typography variant="body2" color="text.secondary" mt={1}>
+                    {reviewedUser.bio}
+                  </Typography>
+                )}
+              </Box>
+            </Stack>
+
+            {/* Rating Distribution */}
+            {reviews.length > 0 && (
+              <Box mt={3}>
+                <Typography variant="subtitle2" gutterBottom>Rating Distribution</Typography>
+                <Stack spacing={1}>
+                  {[5, 4, 3, 2, 1].map(star => (
+                    <Stack key={star} direction="row" alignItems="center" spacing={1}>
+                      <Typography variant="body2" sx={{ minWidth: 20 }}>
+                        {star}
+                      </Typography>
+                      <Star sx={{ color: '#ffa726', fontSize: 16 }} />
+                      <Box 
+                        sx={{ 
+                          flex: 1, 
+                          height: 8, 
+                          bgcolor: 'grey.200', 
+                          borderRadius: 1,
+                          overflow: 'hidden'
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            height: '100%',
+                            width: `${reviews.length ? (ratingDistribution[star] / reviews.length) * 100 : 0}%`,
+                            bgcolor: '#ffa726',
+                            transition: 'width 0.3s ease'
+                          }}
+                        />
+                      </Box>
+                      <Typography variant="body2" color="text.secondary" sx={{ minWidth: 30 }}>
+                        ({ratingDistribution[star]})
+                      </Typography>
+                    </Stack>
+                  ))}
+                </Stack>
+              </Box>
+            )}
+          </Paper>
+        )}
+
+        {/* Review Form */}
+        {currentUser && currentUser.email !== targetUser && (
+          <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              {myReview ? "Update Your Review" : "Leave a Review"}
+            </Typography>
+
+            <Box mb={3}>
+              <Typography component="legend" gutterBottom>
+                Rating *
+              </Typography>
+              <Rating
+                value={rating}
+                onChange={(e, newValue) => setRating(newValue)}
+                size="large"
+                sx={{
+                  fontSize: '2rem',
+                  '& .MuiRating-iconFilled': {
+                    color: '#ff6d00'
+                  },
+                  '& .MuiRating-iconHover': {
+                    color: '#ff8f00'
+                  }
+                }}
+              />
+            </Box>
+
             <TextField
-              label="Feedback"
               multiline
               fullWidth
               rows={4}
+              label="Your Review *"
+              placeholder="Share your experience working with this person. What skills did they help you with? How was the collaboration?"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              inputRef={commentRef}
-              required
-              helperText={`${comment.length}/300`}
-              inputProps={{ maxLength: 300 }}
-              sx={{ mt: 2 }}
+              variant="outlined"
+              sx={{ mb: 3 }}
+              helperText={`${comment.length}/500 characters (minimum 10 characters)`}
+              inputProps={{ maxLength: 500 }}
+              error={comment.length > 0 && comment.length < 10}
             />
-            <Button type="submit" variant="contained" fullWidth sx={{ mt: 2 }}>
-              Submit Review
-            </Button>
-          </Box>
+
+            <Stack direction="row" spacing={2}>
+              <Button
+                variant="contained"
+                onClick={handleSubmit}
+                disabled={submitting || rating === 0 || comment.trim().length < 10}
+                sx={{ 
+                  px: 4,
+                  py: 1.5,
+                  fontSize: '1.1rem'
+                }}
+              >
+                {submitting ? (
+                  <CircularProgress size={20} sx={{ mr: 1 }} />
+                ) : null}
+                {submitting 
+                  ? 'Submitting...' 
+                  : myReview 
+                    ? 'Update Review' 
+                    : 'Submit Review'
+                }
+              </Button>
+              
+              <Button
+                variant="outlined"
+                onClick={() => navigate(`/profile/${targetUser}`)}
+                disabled={submitting}
+              >
+                Cancel
+              </Button>
+            </Stack>
+          </Paper>
         )}
 
-        {loadingReviews ? (
-          <LinearProgress sx={{ mt: 6 }} />
-        ) : pastReviews.length ? (
-          <>
-            <Box mt={6} textAlign="center">
-              <Typography variant="h6">Average Rating</Typography>
-              <Rating value={averageRating} precision={0.5} readOnly />
-              <Typography variant="caption">{averageRating.toFixed(1)} / 5</Typography>
-            </Box>
+        {/* Login Prompt */}
+        {!currentUser && (
+          <Paper elevation={2} sx={{ p: 3, mb: 3, textAlign: 'center', backgroundColor: '#f5f5f5' }}>
+            <Typography variant="h6" gutterBottom>
+              Login Required
+            </Typography>
+            <Typography variant="body2" color="text.secondary" mb={2}>
+              Please log in to leave a review for this user.
+            </Typography>
+            <Button variant="contained" onClick={() => navigate('/login')}>
+              Login
+            </Button>
+          </Paper>
+        )}
 
-            <Box mt={4}>
-              <Typography variant="h6" mb={2}>Ratings Breakdown</Typography>
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={ratingCounts}>
-                  <XAxis dataKey="name" />
-                  <YAxis allowDecimals={false} />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#023020" />
-                </BarChart>
-              </ResponsiveContainer>
-            </Box>
+        <Divider sx={{ my: 3 }} />
 
-            <FormControl fullWidth sx={{ mt: 4 }}>
-              <InputLabel>Sort Reviews</InputLabel>
-              <Select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} label="Sort Reviews">
-                <MenuItem value="newest">Newest</MenuItem>
-                <MenuItem value="highest">Highest Rated</MenuItem>
-                <MenuItem value="lowest">Lowest Rated</MenuItem>
-              </Select>
-            </FormControl>
+        {/* Review List */}
+        <Box>
+          <Typography variant="h6" gutterBottom>
+            All Reviews ({reviews.length})
+          </Typography>
 
-            {mostHelpfulReview && (
-              <Box mt={4}>
-                <Typography variant="h6">Most Helpful Review</Typography>
-                <Card sx={{ mt: 2, backgroundColor: '#FEFFEC' }}>
+          {reviews.length === 0 ? (
+            <Paper elevation={1} sx={{ p: 4, textAlign: 'center', backgroundColor: '#f9f9f9' }}>
+              <StarBorder sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                No Reviews Yet
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Be the first to review this user's skills and collaboration!
+              </Typography>
+            </Paper>
+          ) : (
+            <Stack spacing={2}>
+              {reviews.map((review) => (
+                <Card 
+                  key={review.id} 
+                  elevation={1}
+                  sx={{ 
+                    backgroundColor: review.reviewer === currentUser?.email ? '#e3f2fd' : '#ffffff',
+                    border: review.reviewer === currentUser?.email ? '1px solid #1976d2' : 'none'
+                  }}
+                >
                   <CardContent>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <Avatar src={`https://ui-avatars.com/api/?name=${mostHelpfulReview.reviewer}`} />
+                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={2}>
                       <Box>
-                        <Typography variant="subtitle2">
-                          {mostHelpfulReview.reviewerInfo?.name || mostHelpfulReview.reviewer}
-                        </Typography>
-                        <Rating value={mostHelpfulReview.rating} readOnly size="small" />
-                        <Typography variant="caption">
-                          {new Date(mostHelpfulReview.createdAt?.toDate?.() || mostHelpfulReview.createdAt).toLocaleDateString()}
-                        </Typography>
+                        <Stack direction="row" alignItems="center" spacing={1} mb={1}>
+                          <Typography variant="subtitle1" fontWeight="bold">
+                            {review.reviewer === currentUser?.email ? 'Your Review' : review.reviewer}
+                          </Typography>
+                          {review.reviewer === currentUser?.email && (
+                            <Chip label="Your Review" size="small" color="primary" />
+                          )}
+                        </Stack>
+                        <Rating value={review.rating || 0} precision={0.5} readOnly size="small" />
                       </Box>
-                    </Box>
-                    <Divider sx={{ my: 1 }} />
-                    <Typography variant="body2">{mostHelpfulReview.comment}</Typography>
-                  </CardContent>
-                </Card>
-              </Box>
-            )}
-
-            <Box mt={6}>
-              <Typography variant="h6" ref={commentRef}>All Reviews</Typography>
-              {sortedReviews.map((r, i) => (
-                <Card key={i} sx={{ mt: 2, backgroundColor: '#FEFFEC' }}>
-                  <CardContent>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <Avatar src={`https://ui-avatars.com/api/?name=${r.reviewer}`} />
-                      <Box>
-                        <Typography variant="subtitle2">
-                          {r.reviewerInfo?.name || r.reviewer}
-                        </Typography>
-                        <Rating value={r.rating} readOnly size="small" />
-                        <Typography variant="caption">
-                          {new Date(r.createdAt?.toDate?.() || r.createdAt).toLocaleDateString()}
-                        </Typography>
-                      </Box>
-                    </Box>
-                    <Divider sx={{ my: 1 }} />
-                    <Typography variant="body2">{r.comment}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {review.createdAt?.toDate ? 
+                          review.createdAt.toDate().toLocaleDateString() : 
+                          'Recently'
+                        }
+                      </Typography>
+                    </Stack>
+                    
+                    <Typography variant="body1" sx={{ lineHeight: 1.6 }}>
+                      {review.comment || "No comment provided."}
+                    </Typography>
                   </CardContent>
                 </Card>
               ))}
-            </Box>
-          </>
-        ) : (
-          <Box mt={6} textAlign="center">
-            <Typography variant="body2" color="text.secondary">
-              📝 No reviews yet for this user.
-            </Typography>
-          </Box>
-        )}
-      </Container>
+            </Stack>
+          )}
+        </Box>
 
-      <Toast
-        message={toastMsg}
-        visible={showToast}
-        onHide={() => setShowToast(false)}
-        type={submitted ? 'success' : 'error'}
-      />
+        {/* Snackbar Alert */}
+        <Snackbar
+          open={!!alert}
+          autoHideDuration={6000}
+          onClose={() => setAlert(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          {alert && (
+            <Alert
+              onClose={() => setAlert(null)}
+              severity={alert.type}
+              sx={{ width: "100%" }}
+              variant="filled"
+            >
+              {alert.message}
+            </Alert>
+          )}
+        </Snackbar>
+      </Container>
     </>
   );
-}
+};
+
+export default Review;

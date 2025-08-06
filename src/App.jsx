@@ -42,6 +42,8 @@ export default function App() {
             </PrivateRoute>
           }
         />
+        
+        {/* Profile Routes - both patterns */}
         <Route
           path="/profile"
           element={
@@ -58,6 +60,8 @@ export default function App() {
             </PrivateRoute>
           }
         />
+        
+        {/* Review Routes - both patterns needed */}
         <Route
           path="/review"
           element={
@@ -66,6 +70,15 @@ export default function App() {
             </PrivateRoute>
           }
         />
+        <Route
+          path="/review/:userId"
+          element={
+            <PrivateRoute>
+              <Review />
+            </PrivateRoute>
+          }
+        />
+        
         <Route
           path="/matching"
           element={
