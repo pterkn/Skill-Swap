@@ -223,38 +223,62 @@ const Review = () => {
         updatedAt: serverTimestamp(),
       };
 
+      console.log('Submitting review:', reviewData);
       await setDoc(reviewRef, reviewData);
+      console.log('Review submitted successfully');
 
-      // Update the reviewed user's profile to trigger recalculation
-      const userRef = doc(db, "users", targetUser);
-      await updateDoc(userRef, {
-        lastReviewedAt: serverTimestamp(),
-      });
+      // Update the reviewed user's profile to trigger recalculation (optional)
+      try {
+        const userRef = doc(db, "users", targetUser);
+        await updateDoc(userRef, {
+          lastReviewedAt: serverTimestamp(),
+        });
+        console.log('User profile updated with review timestamp');
+      } catch (updateError) {
+        console.warn('Failed to update user profile timestamp:', updateError);
+        // Don't fail the whole operation if this update fails
+      }
 
+      const isUpdate = !!myReview;
+      
       setAlert({ 
         type: "success", 
-        message: myReview ? "Review updated successfully!" : "Review submitted successfully!" 
+        message: isUpdate ? "Review updated successfully!" : "Review submitted successfully!" 
       });
       
       setMyReview({ ...reviewData, id: reviewId });
       
       // Refresh reviews to show the new/updated review
       await fetchReviews();
+      console.log('Reviews refreshed after submission');
 
-      // Navigate back to profile with refresh trigger after a short delay
+      // Navigate back to profile with multiple triggers for better reliability
       setTimeout(() => {
-        navigate(`/profile/${targetUser}`, { 
-          state: { refreshProfile: true },
-          replace: true 
+        console.log('Navigating back to profile with refresh triggers');
+        navigate(`/profile/${encodeURIComponent(targetUser)}`, { 
+          state: { 
+            refreshProfile: true,
+            reviewSubmitted: true,
+            timestamp: Date.now() // Force state change
+          },
+          replace: false // Don't replace so user can go back if needed
         });
-      }, 2000);
+      }, 1500); // Reduced delay for better UX
 
     } catch (err) {
       console.error("Error submitting review:", err);
-      setAlert({ type: "error", message: "Failed to submit review. Please try again." });
+      setAlert({ 
+        type: "error", 
+        message: `Failed to submit review: ${err.message || 'Please try again.'}` 
+      });
     }
 
     setSubmitting(false);
+  };
+
+  const handleGoBack = () => {
+    console.log('Going back to profile:', targetUser);
+    navigate(`/profile/${encodeURIComponent(targetUser)}`);
   };
 
   const calculateAverage = () => {
@@ -281,6 +305,19 @@ const Review = () => {
       fetchReviews();
     }
   }, [authReady, targetUser, currentUser]);
+
+  // Handle page visibility change to refresh data when user comes back
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && authReady && targetUser) {
+        console.log('Page became visible, refreshing reviews');
+        fetchReviews();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [authReady, targetUser]);
 
   const averageRating = calculateAverage();
   const ratingDistribution = getRatingDistribution();
@@ -324,7 +361,7 @@ const Review = () => {
         {/* Back Button */}
         <Box mb={2}>
           <IconButton 
-            onClick={() => navigate(`/profile/${targetUser}`)}
+            onClick={handleGoBack}
             sx={{ mr: 1 }}
           >
             <ArrowBack />
@@ -472,7 +509,7 @@ const Review = () => {
               
               <Button
                 variant="outlined"
-                onClick={() => navigate(`/profile/${targetUser}`)}
+                onClick={handleGoBack}
                 disabled={submitting}
               >
                 Cancel

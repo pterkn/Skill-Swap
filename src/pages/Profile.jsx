@@ -40,6 +40,62 @@ export default function Profile() {
   const isOwnProfile = !userParam || userParam === currentEmail;
   const userEmail = isOwnProfile ? currentEmail : userParam;
 
+  // Fallback manual fetch function for when real-time listener fails
+  const fetchReviewsManually = useCallback(async () => {
+    if (!userEmail) return;
+    
+    try {
+      console.log('Manually fetching reviews for:', userEmail);
+      
+      // Try with orderBy first
+      try {
+        const reviewsQuery = query(
+          collection(db, 'reviews'),
+          where('reviewee', '==', userEmail),
+          orderBy('createdAt', 'desc')
+        );
+        const querySnapshot = await getDocs(reviewsQuery);
+        const reviewsData = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        console.log('Manual fetch with orderBy successful:', reviewsData.length);
+        setReviews(reviewsData);
+        return;
+      } catch (orderByError) {
+        console.log('OrderBy failed, trying without orderBy:', orderByError);
+      }
+
+      // Fallback without orderBy
+      const simpleQuery = query(
+        collection(db, 'reviews'),
+        where('reviewee', '==', userEmail)
+      );
+      const querySnapshot = await getDocs(simpleQuery);
+      const reviewsData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      // Sort manually
+      reviewsData.sort((a, b) => {
+        const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+        const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+        return bTime - aTime;
+      });
+
+      console.log('Manual fetch without orderBy successful:', reviewsData.length);
+      setReviews(reviewsData);
+      
+    } catch (error) {
+      console.error('Manual reviews fetch failed:', error);
+      // Only set empty if we have no reviews, otherwise keep existing
+      if (reviews.length === 0) {
+        setReviews([]);
+      }
+    }
+  }, [userEmail, reviews.length]);
+
   // Fetch user data and skills (one-time fetch)
   const fetchStaticData = useCallback(async () => {
     if (!userEmail) return;
@@ -98,7 +154,7 @@ export default function Profile() {
 
     console.log('Setting up reviews listener for:', userEmail);
     
-    // Create real-time listener for reviews
+    // Create real-time listener for reviews with error handling
     const reviewsQuery = query(
       collection(db, 'reviews'),
       where('reviewee', '==', userEmail),
@@ -108,22 +164,30 @@ export default function Profile() {
     const unsubscribe = onSnapshot(
       reviewsQuery,
       (snapshot) => {
-        console.log('Reviews updated for', userEmail, '- count:', snapshot.docs.length);
+        console.log('Reviews snapshot received for', userEmail, '- count:', snapshot.docs.length);
         const reviewsData = snapshot.docs.map(doc => ({ 
           id: doc.id, 
           ...doc.data() 
         }));
+        console.log('Setting reviews data:', reviewsData);
         setReviews(reviewsData);
         
-        // If this is not the initial load and reviews were added, show success message
+        // Show success message only for actual new reviews (not initial load)
         if (reviews.length > 0 && reviewsData.length > reviews.length) {
           setSuccessMessage('New review received!');
         }
       },
       (error) => {
-        console.warn('Failed to listen to reviews:', error);
-        // Fallback to empty array instead of failing
-        setReviews([]);
+        console.error('Reviews listener error:', error);
+        
+        // Fallback to one-time fetch if real-time listener fails
+        if (error.code === 'failed-precondition') {
+          console.log('Firestore index missing, falling back to manual fetch');
+          fetchReviewsManually();
+        } else {
+          console.warn('Real-time listener failed, trying manual fetch');
+          fetchReviewsManually();
+        }
       }
     );
 
@@ -132,9 +196,9 @@ export default function Profile() {
       console.log('Cleaning up reviews listener for:', userEmail);
       unsubscribe();
     };
-  }, [userEmail]); // Removed reviews.length dependency to avoid infinite loops
+  }, [userEmail]); // Keep dependency minimal
 
-  // Initial data fetch
+  // Initial data fetch - only for static data, not reviews
   useEffect(() => {
     if (!authReady || !userEmail) {
       console.log('Profile effect skipped - authReady:', authReady, 'userEmail:', userEmail);
@@ -145,14 +209,40 @@ export default function Profile() {
     fetchStaticData();
   }, [authReady, userEmail, fetchStaticData]);
 
+  // Manual refresh function for the refresh button
+  const handleRefresh = useCallback(async () => {
+    console.log('Manual refresh triggered');
+    setLoading(true);
+    try {
+      await fetchStaticData();
+      await fetchReviewsManually(); // Also refresh reviews manually
+      setSuccessMessage('Profile refreshed successfully!');
+    } catch (error) {
+      console.error('Manual refresh failed:', error);
+      setError('Failed to refresh profile');
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchStaticData, fetchReviewsManually]);
+
   // Listen for navigation state changes (when coming back from review page)
   useEffect(() => {
-    if (location.state?.reviewSubmitted) {
-      setSuccessMessage('Review submitted successfully!');
+    if (location.state?.reviewSubmitted || location.state?.refreshProfile) {
+      console.log('Navigation state detected:', location.state);
+      setSuccessMessage(
+        location.state.reviewSubmitted 
+          ? 'Review submitted successfully!' 
+          : 'Profile updated with new review!'
+      );
       // Clear the state to prevent showing message again
       window.history.replaceState({}, '', location.pathname);
+      
+      // Force a manual review fetch to ensure we have the latest data
+      setTimeout(() => {
+        fetchReviewsManually();
+      }, 500);
     }
-  }, [location.state, location.pathname]);
+  }, [location.state, location.pathname, fetchReviewsManually]);
 
   const handleUpdate = async () => {
     if (!userData.name?.trim()) {
@@ -177,8 +267,8 @@ export default function Profile() {
     }
   };
 
-  const handleRefresh = () => {
-    fetchStaticData();
+  const handleRefreshClick = () => {
+    handleRefresh();
   };
 
   // Calculate ratings with better error handling
@@ -288,7 +378,7 @@ export default function Profile() {
                   Edit Profile
                 </Button>
                 <Button 
-                  onClick={handleRefresh} 
+                  onClick={handleRefreshClick} 
                   variant="outlined"
                   fullWidth
                   size="small"
