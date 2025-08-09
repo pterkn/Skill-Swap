@@ -15,7 +15,14 @@ import {
   enableNetwork,
   disableNetwork,
   initializeFirestore,
-  CACHE_SIZE_UNLIMITED
+  CACHE_SIZE_UNLIMITED,
+  writeBatch,
+  limit,
+  startAfter,
+  onSnapshot,
+  serverTimestamp,
+  arrayUnion,
+  arrayRemove
 } from "firebase/firestore";
 import { getDatabase, connectDatabaseEmulator } from "firebase/database";
 import { getStorage, connectStorageEmulator } from "firebase/storage";
@@ -35,13 +42,13 @@ const firebaseConfig = {
 // Initialize Firebase App
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firebase Services with better caching
+// Initialize Firebase Services with optimized settings
 export const auth = getAuth(app);
 
-// Initialize Firestore with enhanced settings for your app
+// Optimized Firestore initialization for better performance
 export const db = initializeFirestore(app, {
-  cacheSizeBytes: CACHE_SIZE_UNLIMITED,
-  experimentalForceLongPolling: false, // Set to true if you have connection issues
+  cacheSizeBytes: 50 * 1024 * 1024, // 50MB cache instead of unlimited
+  experimentalForceLongPolling: false,
 });
 
 export const dbRealtime = getDatabase(app);
@@ -63,7 +70,273 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 // ================================
-//  Firebase Data Helper Methods
+//  PERFORMANCE OPTIMIZED METHODS
+// ================================
+
+/**
+ * Batch fetch multiple users by emails with caching
+ * @param {Array<string>} emails - Array of user emails
+ * @param {Map} cache - Cache map to store/retrieve results
+ * @returns {Promise<Object>} Object with email as key, user data as value
+ */
+export const batchFetchUsers = async (emails, cache = new Map()) => {
+  if (!emails || emails.length === 0) return {};
+  
+  const uniqueEmails = [...new Set(emails)];
+  const results = {};
+  const emailsToFetch = [];
+  
+  // Check cache first
+  uniqueEmails.forEach(email => {
+    if (cache.has(email)) {
+      results[email] = cache.get(email);
+    } else {
+      emailsToFetch.push(email);
+    }
+  });
+  
+  if (emailsToFetch.length === 0) return results;
+  
+  try {
+    // Batch the requests in chunks of 10 (Firestore limit for 'in' queries)
+    const chunks = [];
+    for (let i = 0; i < emailsToFetch.length; i += 10) {
+      chunks.push(emailsToFetch.slice(i, i + 10));
+    }
+    
+    const chunkPromises = chunks.map(async (chunk) => {
+      try {
+        // Try to use 'in' query if possible (more efficient)
+        const usersQuery = query(
+          collection(db, "users"),
+          where("email", "in", chunk)
+        );
+        
+        const snapshot = await getDocs(usersQuery);
+        const chunkResults = {};
+        
+        snapshot.docs.forEach(doc => {
+          const userData = { id: doc.id, email: doc.id, ...doc.data() };
+          chunkResults[doc.id] = userData;
+          cache.set(doc.id, userData); // Update cache
+        });
+        
+        // Handle emails that don't have user documents
+        chunk.forEach(email => {
+          if (!chunkResults[email]) {
+            const defaultUser = {
+              id: email,
+              email: email,
+              name: email.split('@')[0],
+              displayName: email.split('@')[0]
+            };
+            chunkResults[email] = defaultUser;
+            cache.set(email, defaultUser);
+          }
+        });
+        
+        return chunkResults;
+      } catch (error) {
+        console.warn('Batch user fetch failed for chunk, falling back to individual requests:', error);
+        
+        // Fallback to individual requests
+        const individualPromises = chunk.map(async (email) => {
+          try {
+            const userDoc = await getDoc(doc(db, "users", email));
+            const userData = userDoc.exists() 
+              ? { id: userDoc.id, email: userDoc.id, ...userDoc.data() }
+              : {
+                  id: email,
+                  email: email,
+                  name: email.split('@')[0],
+                  displayName: email.split('@')[0]
+                };
+            cache.set(email, userData);
+            return { [email]: userData };
+          } catch (individualError) {
+            console.warn(`Failed to fetch user ${email}:`, individualError);
+            const defaultUser = {
+              id: email,
+              email: email,
+              name: email.split('@')[0],
+              displayName: email.split('@')[0]
+            };
+            cache.set(email, defaultUser);
+            return { [email]: defaultUser };
+          }
+        });
+        
+        const individualResults = await Promise.all(individualPromises);
+        return Object.assign({}, ...individualResults);
+      }
+    });
+    
+    const chunkResults = await Promise.all(chunkPromises);
+    const fetchedResults = Object.assign({}, ...chunkResults);
+    
+    return { ...results, ...fetchedResults };
+    
+  } catch (error) {
+    console.error("Error in batch fetch users:", error);
+    
+    // Final fallback: return default users for all emails
+    const fallbackResults = {};
+    emailsToFetch.forEach(email => {
+      if (!results[email]) {
+        fallbackResults[email] = {
+          id: email,
+          email: email,
+          name: email.split('@')[0],
+          displayName: email.split('@')[0]
+        };
+      }
+    });
+    
+    return { ...results, ...fallbackResults };
+  }
+};
+
+/**
+ * Batch fetch user ratings with caching
+ * @param {Array<string>} emails - Array of user emails
+ * @param {Map} cache - Cache map for ratings
+ * @returns {Promise<Object>} Object with email as key, rating as value
+ */
+export const batchFetchUserRatings = async (emails, cache = new Map()) => {
+  if (!emails || emails.length === 0) return {};
+  
+  const uniqueEmails = [...new Set(emails)];
+  const results = {};
+  const emailsToFetch = [];
+  
+  // Check cache first
+  uniqueEmails.forEach(email => {
+    if (cache.has(email)) {
+      results[email] = cache.get(email);
+    } else {
+      emailsToFetch.push(email);
+    }
+  });
+  
+  if (emailsToFetch.length === 0) return results;
+  
+  try {
+    const ratingPromises = emailsToFetch.map(async (email) => {
+      try {
+        const reviewsQuery = query(
+          collection(db, 'reviews'),
+          where('reviewee', '==', email),
+          limit(50) // Limit to prevent excessive data transfer
+        );
+        
+        const reviewsSnap = await getDocs(reviewsQuery);
+        const reviews = reviewsSnap.docs.map(doc => doc.data());
+        
+        let rating = 0;
+        if (reviews.length > 0) {
+          const avgRating = reviews.reduce((sum, review) => sum + (review.rating || 0), 0) / reviews.length;
+          rating = Math.round(avgRating * 10) / 10;
+        }
+        
+        cache.set(email, rating);
+        return { [email]: rating };
+        
+      } catch (error) {
+        console.warn(`Failed to fetch ratings for ${email}:`, error);
+        cache.set(email, 0);
+        return { [email]: 0 };
+      }
+    });
+    
+    const ratingResults = await Promise.all(ratingPromises);
+    const fetchedRatings = Object.assign({}, ...ratingResults);
+    
+    return { ...results, ...fetchedRatings };
+    
+  } catch (error) {
+    console.error("Error in batch fetch user ratings:", error);
+    
+    // Return default ratings
+    const fallbackRatings = {};
+    emailsToFetch.forEach(email => {
+      if (results[email] === undefined) {
+        fallbackRatings[email] = 0;
+      }
+    });
+    
+    return { ...results, ...fallbackRatings };
+  }
+};
+
+/**
+ * Optimized skills listener with better error handling
+ * @param {Function} callback - Callback function to handle skills data
+ * @param {Function} errorCallback - Error callback function
+ * @returns {Function} Unsubscribe function
+ */
+export const subscribeToSkills = (callback, errorCallback = console.error) => {
+  try {
+    const q = query(collection(db, 'skills'), orderBy('createdAt', 'desc'));
+    
+    return onSnapshot(q, 
+      (snapshot) => {
+        try {
+          const skills = snapshot.docs.map(doc => ({ 
+            id: doc.id, 
+            ...doc.data() 
+          }));
+          callback(skills);
+        } catch (processingError) {
+          console.error('Error processing skills snapshot:', processingError);
+          errorCallback(processingError);
+        }
+      },
+      (error) => {
+        console.error('Skills listener error:', error);
+        
+        // Try fallback query without orderBy if index is missing
+        if (error.code === 'failed-precondition' || error.message.includes('index')) {
+          console.log('Trying fallback query without orderBy...');
+          
+          const fallbackQuery = collection(db, 'skills');
+          return onSnapshot(fallbackQuery,
+            (snapshot) => {
+              try {
+                const skills = snapshot.docs.map(doc => ({ 
+                  id: doc.id, 
+                  ...doc.data() 
+                }));
+                
+                // Sort manually by creation date
+                skills.sort((a, b) => {
+                  const aTime = a.createdAt?.seconds || 0;
+                  const bTime = b.createdAt?.seconds || 0;
+                  return bTime - aTime;
+                });
+                
+                callback(skills);
+              } catch (processingError) {
+                console.error('Error processing fallback skills snapshot:', processingError);
+                errorCallback(processingError);
+              }
+            },
+            errorCallback
+          );
+        } else {
+          errorCallback(error);
+        }
+      }
+    );
+    
+  } catch (error) {
+    console.error('Error setting up skills subscription:', error);
+    errorCallback(error);
+    return () => {}; // Return empty unsubscribe function
+  }
+};
+
+// ================================
+//  EXISTING HELPER METHODS (Optimized)
 // ================================
 
 /**
@@ -184,6 +457,10 @@ export const fetchAllSkills = async (options = {}) => {
       constraints.push(where("email", "==", options.userEmail));
     }
     
+    if (options.limit) {
+      constraints.push(limit(options.limit));
+    }
+    
     // Try with orderBy first, fallback if index missing
     try {
       constraints.push(orderBy("createdAt", "desc"));
@@ -200,7 +477,10 @@ export const fetchAllSkills = async (options = {}) => {
         console.log('Skills index missing, using fallback query...');
         
         // Remove orderBy and try again
-        const fallbackConstraints = constraints.slice(0, -1); // Remove orderBy
+        const fallbackConstraints = constraints.filter(constraint => 
+          constraint.type !== 'orderBy'
+        );
+        
         if (fallbackConstraints.length > 0) {
           skillsQuery = query(skillsQuery, ...fallbackConstraints);
         }
@@ -419,6 +699,42 @@ export const collections = {
   messages: collection(db, "messages"),
 };
 
+// ================================
+//  Utility Functions
+// ================================
+
+/**
+ * Create server timestamp
+ */
+export const timestamp = () => serverTimestamp();
+
+/**
+ * Batch write operations
+ * @param {Array<Object>} operations - Array of operations {type, ref, data}
+ * @returns {Promise<void>}
+ */
+export const batchWrite = async (operations) => {
+  const batch = writeBatch(db);
+  
+  operations.forEach(({ type, ref, data }) => {
+    switch (type) {
+      case 'set':
+        batch.set(ref, data);
+        break;
+      case 'update':
+        batch.update(ref, data);
+        break;
+      case 'delete':
+        batch.delete(ref);
+        break;
+      default:
+        console.warn('Unknown batch operation type:', type);
+    }
+  });
+  
+  return batch.commit();
+};
+
 // Development helper to check Firebase connection
 if (process.env.NODE_ENV === 'development') {
   console.log('🔥 Firebase initialized successfully');
@@ -438,13 +754,13 @@ export const testFirebaseConnection = async () => {
     // Test Firestore
     const testDoc = doc(db, 'test', 'connection');
     await getDoc(testDoc); // This will work even if doc doesn't exist
-    console.log('Firestore: Connected ');
+    console.log('Firestore: Connected ✓');
     
     // Test Realtime Database
-    console.log('Realtime DB: Connected ');
+    console.log('Realtime DB: Connected ✓');
     
     // Test Storage
-    console.log('Storage: Connected ');
+    console.log('Storage: Connected ✓');
     
     return true;
   } catch (error) {
