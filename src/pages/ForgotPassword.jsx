@@ -52,7 +52,7 @@ export default function ForgotPassword() {
         email,
         requestedAt: serverTimestamp()
       });
-      setToastMsg('✅ If that account exists, a reset link has been sent');
+      setToastMsg(' If that account exists, a reset link has been sent');
       setShowToast(true);
       setEmail('');
       setCooldown(60);
@@ -61,8 +61,8 @@ export default function ForgotPassword() {
       const code = err.code;
       const msg =
         code === 'auth/invalid-email'
-          ? 'Invalid email address ❌'
-          : 'Failed to send reset link ❌';
+          ? 'Invalid email address '
+          : 'Failed to send reset link ';
       setToastMsg(msg);
       setShowToast(true);
     } finally {

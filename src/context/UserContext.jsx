@@ -25,7 +25,7 @@ export const UserProvider = ({ children }) => {
           }
         });
 
-        // ✅ Use Realtime DB to mark user online
+        //  Use Realtime DB to mark user online
         const safeEmail = user.email.replace(/\./g, '_');
         const statusRef = ref(dbRealtime, `status/${safeEmail}`);
 

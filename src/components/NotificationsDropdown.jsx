@@ -24,7 +24,7 @@ export default function NotificationsDropdown({ anchorEl, open, onClose, notific
       }}
     >
       <Typography variant="subtitle1" sx={{ px: 2, pt: 1.5, pb: 0.5 }}>
-        🔔 Notifications
+         Notifications
       </Typography>
       <Divider />
       {notifications.length === 0 ? (

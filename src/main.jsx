@@ -5,7 +5,7 @@ import { ThemeProvider, CssBaseline } from '@mui/material';
 
 import App from './App.jsx';
 import theme from './theme.js';
-import { UserProvider } from './context/UserContext'; // ✅ Add user context provider
+import { UserProvider } from './context/UserContext'; //  Add user context provider
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

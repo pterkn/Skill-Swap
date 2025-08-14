@@ -34,7 +34,7 @@ export default function Chat() {
   const currentUser = auth.currentUser?.email || '';
   const chatId = [currentUser, partner].sort().join('_').replace(/\./g, '_');
 
-  // 🔄 Listen for incoming messages (deduplicated)
+  //  Listen for incoming messages (deduplicated)
   useEffect(() => {
     const msgRef = ref(dbRealtime, `chats/${chatId}`);
     onChildAdded(msgRef, (snap) => {
@@ -52,7 +52,7 @@ export default function Chat() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // ✅ Reset unread count on mount
+  //  Reset unread count on mount
   useEffect(() => {
     const seenRef = ref(dbRealtime, `chatMetadata/${chatId}/unreadCount/${currentUser.replace(/\./g, '_')}`);
     set(seenRef, 0);

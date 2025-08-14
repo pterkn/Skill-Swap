@@ -541,7 +541,7 @@ export default function Profile() {
             {mostHelpfulReview && (
               <Box mb={3}>
                 <Typography variant="subtitle1" color="primary" gutterBottom>
-                  ⭐ Most Helpful Review
+                   Most Helpful Review
                 </Typography>
                 <Card sx={{ backgroundColor: '#E3F2FD', border: '1px solid #1976d2' }}>
                   <CardContent>

@@ -168,7 +168,7 @@ export default function Dashboard() {
         console.log('Updating skill with ID:', editingSkill, 'Data:', updateData);
         
         await updateDoc(doc(db, 'skills', editingSkill), updateData);
-        setToastMsg('✅ Skill updated successfully!');
+        setToastMsg(' Skill updated successfully!');
       } else {
         // Create new skill
         const createData = {
@@ -179,7 +179,7 @@ export default function Dashboard() {
         console.log('Creating new skill with data:', createData);
         
         await addDoc(collection(db, 'skills'), createData);
-        setToastMsg('✅ Skill added successfully!');
+        setToastMsg(' Skill added successfully!');
       }
       
       // Reset form
@@ -192,7 +192,7 @@ export default function Dashboard() {
       
     } catch (err) {
       console.error('Error saving skill:', err);
-      setToastMsg(`❌ Failed to save skill: ${err.message}`);
+      setToastMsg(` Failed to save skill: ${err.message}`);
       setShowToast(true);
     }
   };
@@ -242,11 +242,11 @@ export default function Dashboard() {
     
     try {
       await deleteDoc(doc(db, 'skills', id));
-      setToastMsg('✅ Skill deleted successfully');
+      setToastMsg(' Skill deleted successfully');
       setShowToast(true);
     } catch (err) {
       console.error('Error deleting skill:', err);
-      setToastMsg('❌ Failed to delete skill');
+      setToastMsg(' Failed to delete skill');
       setShowToast(true);
     }
   };
