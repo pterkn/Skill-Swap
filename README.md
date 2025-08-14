@@ -1,7 +1,7 @@
 # SkillSwap 🌐
 
 SkillSwap is a modern skill-sharing platform that connects people who want to **offer** and **learn** skills.  
-It enables users to match with others based on complementary skill sets, chat in real-time, leave ratings & reviews, and build a trusted learning community.
+It enables users to match with others based on complementary skill sets, chat in real-time, leave ratings & reviews; and build a trusted learning community.
 
 ---
 
