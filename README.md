@@ -1,12 +1,35 @@
-# React + Vite
+# SkillSwap 🌐
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+SkillSwap is a modern skill-sharing platform that connects people who want to **offer** and **learn** skills.  
+It enables users to match with others based on complementary skill sets, chat in real-time, leave ratings & reviews, and build a trusted learning community.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🚀 Features
 
-## Expanding the ESLint configuration
+### 🔹 Core
+- **User Profiles** – Showcase skills offered, skills requested, bio, availability, and rating.
+- **Real-time Chat** – Seamless messaging with online/offline indicators and typing notifications.
+- **Ratings & Reviews** – Leave and view reviews to build trust.
+- **Community Skills Dashboard** – Browse all available skills and find potential matches.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 🔹 Advanced
+- **Notifications** – Toasts and alerts for messages, matches and reviews.
+- **Responsive Design** – Optimized for desktop, tablet, and mobile devices.
+- **Loading & Error States** – Smooth UI feedback for data fetching and errors.
+- **Polished UI** – Built with **Material UI** for a clean & modern look.
+
+---
+
+## 🛠 Tech Stack
+
+### Frontend
+- **React (Vite)** + **JavaScript**
+- **Material UI (MUI)** for styling and components
+- **Firebase** (Firestore, Authentication) for real-time data
+- **React Router** for navigation
+
+### Backend
+- **Firebase Admin SDK** for seeding data
+- **Node.js** scripts for database setup and population
+
